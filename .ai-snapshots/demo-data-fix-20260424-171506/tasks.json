@@ -1,0 +1,135 @@
+{
+  "life": [
+    {
+      "id": "demo-life-overdue-high",
+      "text": "Renew car registration",
+      "done": false,
+      "priority": "high",
+      "dueOffset": -3,
+      "noteItems": [],
+      "children": []
+    },
+    {
+      "id": "demo-life-today-medium",
+      "text": "Meal prep lunches for the week",
+      "done": false,
+      "priority": "medium",
+      "dueOffset": 0,
+      "noteItems": [
+        { "id": "demo-life-note-1", "text": "Check pantry before shopping", "done": false }
+      ],
+      "children": []
+    },
+    {
+      "id": "demo-life-no-date-low",
+      "text": "Organize hallway closet",
+      "done": false,
+      "priority": "low",
+      "dueOffset": null,
+      "noteItems": [],
+      "children": []
+    },
+    {
+      "id": "demo-life-done-notes",
+      "text": "Book annual dentist cleaning",
+      "done": true,
+      "priority": "medium",
+      "dueOffset": -6,
+      "noteItems": [
+        { "id": "demo-life-done-note-1", "text": "Confirm insurance details", "done": true },
+        { "id": "demo-life-done-note-2", "text": "Add appointment to calendar", "done": true }
+      ],
+      "children": []
+    }
+  ],
+  "work": [
+    {
+      "id": "demo-work-today-high",
+      "text": "Send launch recap to team",
+      "done": false,
+      "priority": "high",
+      "dueOffset": 0,
+      "noteItems": [
+        { "id": "demo-work-note-1", "text": "Include open blockers", "done": true },
+        { "id": "demo-work-note-2", "text": "Add next milestone dates", "done": false }
+      ],
+      "children": []
+    },
+    {
+      "id": "demo-work-future-medium",
+      "text": "Review Q2 forecast workbook",
+      "done": false,
+      "priority": "medium",
+      "dueOffset": 4,
+      "noteItems": [],
+      "children": []
+    },
+    {
+      "id": "demo-work-overdue-low",
+      "text": "Archive vendor invoices",
+      "done": false,
+      "priority": "low",
+      "dueOffset": -1,
+      "noteItems": [],
+      "children": []
+    },
+    {
+      "id": "demo-work-complete-high",
+      "text": "Finalize onboarding checklist",
+      "done": true,
+      "priority": "high",
+      "dueOffset": -2,
+      "noteItems": [],
+      "children": []
+    }
+  ],
+  "pd": [
+    {
+      "id": "demo-pd-four-notes",
+      "text": "Audit listing bundle candidates",
+      "done": false,
+      "priority": "high",
+      "dueOffset": 2,
+      "noteItems": [
+        { "id": "demo-pd-four-1", "text": "Export Keepa shortlist", "done": true },
+        { "id": "demo-pd-four-2", "text": "Check pack-size math", "done": false },
+        { "id": "demo-pd-four-3", "text": "Verify gated categories", "done": false },
+        { "id": "demo-pd-four-4", "text": "Save top five products", "done": true }
+      ],
+      "children": []
+    },
+    {
+      "id": "demo-pd-all-notes-complete",
+      "text": "Update supplier contact sheet",
+      "done": false,
+      "priority": "medium",
+      "dueOffset": null,
+      "noteItems": [
+        { "id": "demo-pd-all-1", "text": "Confirm rep email", "done": true },
+        { "id": "demo-pd-all-2", "text": "Add payment terms", "done": true },
+        { "id": "demo-pd-all-3", "text": "Attach latest price list", "done": true }
+      ],
+      "children": []
+    },
+    {
+      "id": "demo-pd-due-today-low",
+      "text": "Reprice slow-moving demo SKU",
+      "done": false,
+      "priority": "low",
+      "dueOffset": 0,
+      "noteItems": [],
+      "children": []
+    },
+    {
+      "id": "demo-pd-completed-medium",
+      "text": "Save sample COGS products",
+      "done": true,
+      "priority": "medium",
+      "dueOffset": -4,
+      "noteItems": [
+        { "id": "demo-pd-complete-note", "text": "Use realistic tax and discount examples", "done": true }
+      ],
+      "children": []
+    }
+  ]
+}

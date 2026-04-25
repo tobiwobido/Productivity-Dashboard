@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Productivity Dashboard</title>
+<link rel="icon" type="image/png" href="assets/Tobi.png">
+<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="widgets/task-manager/style.css">
+<link rel="stylesheet" href="widgets/cogs-calculator/style.css">
+</head>
+<body class="app-preload">
+
+<!-- ── Sidebar nav ────────────────────────────────────────────────────────── -->
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <img src="assets/nhello.png" class="sidebar-brand-img" alt="nhello">
+  </div>
+  <div class="sidebar-section-label">Workspace</div>
+  <div class="nav-items">
+
+    <button class="nav-item active" data-panel="task-manager">
+      <svg width="16" height="16" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor"
+           stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 11l3 3L22 4"/>
+        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+      </svg>
+      Tasks
+    </button>
+
+    <button class="nav-item" data-panel="cogs-calc">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2.3 3h1.4l1.2 5.6h6.1l1.4-4.1H4.7"/>
+        <circle cx="6" cy="12.3" r="1"/>
+        <circle cx="11.2" cy="12.3" r="1"/>
+      </svg>
+      Costs
+    </button>
+
+  </div>
+  <div class="sidebar-footer">
+    <div class="sidebar-version-panel">
+      <div class="sidebar-preview-labels">
+        <span class="sidebar-preview-title">Version</span>
+        <div class="version-unsaved" id="version-unsaved">
+          <span class="version-unsaved-dot" aria-hidden="true"></span>
+          <span>Unpublished</span>
+        </div>
+      </div>
+      <div class="version-segmented" role="group" aria-label="Dashboard version">
+        <button class="version-option active" id="version-production-btn" type="button" data-version="production">Production</button>
+        <button class="version-option" id="version-preview-btn" type="button" data-version="preview">Preview</button>
+      </div>
+      <div class="version-publish-revert" id="version-publish-revert" aria-hidden="true">
+        <button class="version-action-btn revert-publish-btn" id="revert-publish-btn" type="button">
+          <span class="version-action-label">Revert Publish</span>
+          <span class="version-action-feedback">Publish reverted</span>
+        </button>
+      </div>
+      <div class="version-actions" id="version-actions" aria-hidden="true">
+        <button class="version-action-btn publish-btn" id="publish-preview-btn" type="button">
+          <span class="version-action-label">Publish Preview</span>
+          <span class="version-action-feedback">Published</span>
+        </button>
+        <button class="version-action-btn revert-btn" id="reset-preview-btn" type="button">
+          <span class="version-action-label">Revert Changes</span>
+          <span class="version-action-feedback">Preview reverted</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Main content ───────────────────────────────────────────────────────── -->
+<main class="main-content">
+
+  <!-- Task Manager panel -->
+  <section class="panel active" id="panel-task-manager">
+    <div class="app-wrap">
+
+      <div class="app-header">
+        <div class="header-title-row">
+          <img src="assets/Aminal Sticker Snail.gif" class="header-gif" alt="">
+          <h1>My Tasks</h1>
+        </div>
+      </div>
+
+      <div class="panel-body">
+
+      <!-- Dashboard -->
+      <div class="dashboard">
+        <div class="dashboard-left-group">
+          <div class="dashboard-left">
+            <svg viewBox="0 0 120 120" width="120" height="120" style="display:block;">
+              <circle cx="60" cy="60" r="54" fill="none" stroke="var(--surface-2)" stroke-width="6"/>
+              <circle id="donut-fill" cx="60" cy="60" r="54" fill="none" stroke="var(--gold)" stroke-width="6"
+                      stroke-linecap="round" stroke-dasharray="0 339.29"
+                      style="transform:rotate(-90deg);transform-origin:center;"/>
+              <text id="donut-pct" x="50%" y="50%" text-anchor="middle" dominant-baseline="central" fill="#e8e8e6" font-size="26" font-weight="700"
+                    font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">0%</text>
+            </svg>
+          </div>
+          <div class="dash-divider dashboard-divider-left" aria-hidden="true"></div>
+          <div class="dashboard-middle">
+            <div class="chart-heading">Today's Progress</div>
+            <div class="chart-sub" id="chart-sub">0 of 0 tasks completed</div>
+          </div>
+        </div>
+        <div class="dash-divider dashboard-divider-center" aria-hidden="true"></div>
+        <div class="dashboard-right-group">
+          <div class="dashboard-right">
+            <div class="dashboard-status-stack">
+              <div class="dash-pill overdue" id="pill-overdue">
+                <span class="dash-pill-count" id="cnt-overdue">0</span>Overdue
+              </div>
+              <div class="dash-pill today" id="pill-today">
+                <span class="dash-pill-count" id="cnt-today">0</span>Due Today
+              </div>
+            </div>
+            <div class="dash-divider dashboard-divider-right" aria-hidden="true"></div>
+            <div class="dashboard-add-group">
+              <input type="text" id="dashboard-add-input" placeholder="Add a task..."
+                     onkeydown="if(event.key==='Enter')addTaskFromDashboardPreview()">
+              <select class="dashboard-category-select" id="dashboard-add-category" aria-label="Task category">
+                <option value="life">Life</option>
+                <option value="work">Work</option>
+                <option value="pd">Projects</option>
+              </select>
+              <select class="add-priority-select" id="dashboard-add-priority" aria-label="Task priority">
+                <option value="high">High</option>
+                <option value="medium" selected>Medium</option>
+                <option value="low">Low</option>
+              </select>
+              <button class="col-add-btn task-add-btn dashboard-add-btn" id="dashboard-add-btn" aria-label="Add task" onclick="addTaskFromDashboardPreview()">
+                <span class="btn-icon" aria-hidden="true">
+                  <span class="add-icon-line add-icon-line-h"></span>
+                  <span class="add-icon-line add-icon-line-v"></span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-tabs filter-tabs-row">
+        <button class="filter-tab active" data-filter="all" onclick="setFilter('all')">
+          <span class="filter-tab-inner">
+            <span>All</span>
+            <span class="filter-tab-count" id="cnt-all">0</span>
+          </span>
+        </button>
+        <button class="filter-tab" data-filter="active" onclick="setFilter('active')">
+          <span class="filter-tab-inner">
+            <span>Active</span>
+            <span class="filter-tab-count" id="cnt-active">0</span>
+          </span>
+        </button>
+        <button class="filter-tab" data-filter="done" onclick="setFilter('done')">
+          <span class="filter-tab-inner">
+            <span>Done</span>
+            <span class="filter-tab-count" id="cnt-done">0</span>
+          </span>
+        </button>
+        <button class="filter-clear-done" id="filter-clear-done" type="button" onclick="clearAllDone()" aria-hidden="true">
+          <span class="filter-clear-label">Clear</span>
+          <span class="filter-clear-feedback">Cleared</span>
+        </button>
+      </div>
+
+      <!-- Three columns -->
+      <div class="columns-grid">
+
+        <div class="col col-life">
+          <div class="col-header">
+            <span class="col-title">
+              <span class="col-title-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2.5 7.2L8 2.8l5.5 4.4"/>
+                  <path d="M4.2 6.8V13h7.6V6.8"/>
+                </svg>
+              </span>
+              <span>Life</span>
+            </span>
+          </div>
+          <div class="col-add">
+            <input type="text" id="input-life" placeholder="Add a task..."
+                   onkeydown="if(event.key==='Enter')addTask('life')">
+            <select class="add-priority-select" id="priority-life" aria-label="Task priority">
+              <option value="high">High</option>
+              <option value="medium" selected>Medium</option>
+              <option value="low">Low</option>
+            </select>
+            <button class="col-add-btn task-add-btn" aria-label="Add task" onclick="addTask('life')">
+              <span class="btn-icon" aria-hidden="true">
+                <span class="add-icon-line add-icon-line-h"></span>
+                <span class="add-icon-line add-icon-line-v"></span>
+              </span>
+            </button>
+          </div>
+          <div class="col-stats">
+            <span class="pend"><strong id="pend-life">0</strong> pending</span>
+            <span class="done"><strong id="done-life">0</strong> done</span>
+          </div>
+          <div class="col-tasks" id="tasks-life"></div>
+        </div>
+
+        <div class="col col-work">
+          <div class="col-header">
+            <span class="col-title">
+              <span class="col-title-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2.2" y="4.5" width="11.6" height="8.5" rx="1.6"/>
+                  <path d="M6 4V3.3c0-.6.4-1 1-1h2c.6 0 1 .4 1 1V4"/>
+                  <path d="M2.2 8h11.6"/>
+                </svg>
+              </span>
+              <span>Work</span>
+            </span>
+          </div>
+          <div class="col-add">
+            <input type="text" id="input-work" placeholder="Add a task..."
+                   onkeydown="if(event.key==='Enter')addTask('work')">
+            <select class="add-priority-select" id="priority-work" aria-label="Task priority">
+              <option value="high">High</option>
+              <option value="medium" selected>Medium</option>
+              <option value="low">Low</option>
+            </select>
+            <button class="col-add-btn task-add-btn" aria-label="Add task" onclick="addTask('work')">
+              <span class="btn-icon" aria-hidden="true">
+                <span class="add-icon-line add-icon-line-h"></span>
+                <span class="add-icon-line add-icon-line-v"></span>
+              </span>
+            </button>
+          </div>
+          <div class="col-stats">
+            <span class="pend"><strong id="pend-work">0</strong> pending</span>
+            <span class="done"><strong id="done-work">0</strong> done</span>
+          </div>
+          <div class="col-tasks" id="tasks-work"></div>
+        </div>
+
+        <div class="col col-pd">
+          <div class="col-header">
+            <span class="col-title">
+              <span class="col-title-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M8 1.35a4.85 4.85 0 0 0-3.08 8.6c.58.47.98.94.98 1.65v.32c0 .55.43.98.98.98h2.24c.55 0 .98-.43.98-.98v-.32c0-.71.4-1.18.98-1.65A4.85 4.85 0 0 0 8 1.35z"/>
+                  <path d="M6.25 14.1h3.5"/>
+                  <path d="M6.95 15.45h2.1"/>
+                </svg>
+              </span>
+              <span>Projects</span>
+            </span>
+          </div>
+          <div class="col-add">
+            <input type="text" id="input-pd" placeholder="Add a task..."
+                   onkeydown="if(event.key==='Enter')addTask('pd')">
+            <select class="add-priority-select" id="priority-pd" aria-label="Task priority">
+              <option value="high">High</option>
+              <option value="medium" selected>Medium</option>
+              <option value="low">Low</option>
+            </select>
+            <button class="col-add-btn task-add-btn" aria-label="Add task" onclick="addTask('pd')">
+              <span class="btn-icon" aria-hidden="true">
+                <span class="add-icon-line add-icon-line-h"></span>
+                <span class="add-icon-line add-icon-line-v"></span>
+              </span>
+            </button>
+          </div>
+          <div class="col-stats">
+            <span class="pend"><strong id="pend-pd">0</strong> pending</span>
+            <span class="done"><strong id="done-pd">0</strong> done</span>
+          </div>
+          <div class="col-tasks" id="tasks-pd"></div>
+        </div>
+
+      </div>
+
+      </div><!-- /panel-body -->
+    </div>
+  </section>
+
+  <!-- COGS Calculator panel -->
+  <section class="panel" id="panel-cogs-calc">
+    <div class="app-wrap cogs-wrap">
+
+      <div class="cogs-header">
+        <div class="header-title-row">
+          <img src="assets/Aminal Sticker Money.gif" class="header-gif" alt="">
+          <h1>Cost Calculator</h1>
+        </div>
+      </div>
+
+      <div class="panel-body">
+      <div class="cogs-main">
+
+        <!-- Saved products — narrow left column -->
+        <div class="cogs-saved-col">
+          <p class="section-label">Saved products</p>
+          <div class="saved-list" id="savedList"><p class="no-saved">No saved products yet.</p></div>
+        </div>
+
+        <!-- Middle: inputs + validation + buttons -->
+        <div class="cogs-middle">
+
+          <div class="card">
+            <p class="section-label">Product details</p>
+            <div class="row">
+              <label>Product name</label>
+              <input type="text" id="prodName" placeholder="e.g. Stitch Sponge 3ct" oninput="setProductNameSaveError(false)">
+              <span class="unit unit-spacer"></span>
+            </div>
+            <div id="prodNameError" class="field-error" role="alert">Product name is required to save</div>
+            <div class="row">
+              <label>List price</label>
+              <input type="number" id="listPrice" value="" step="0.01" min="0" oninput="calc()">
+              <span class="unit">$</span>
+            </div>
+            <div class="row">
+              <label>Source pack size</label>
+              <input type="number" id="sourcePack" value="3" step="1" min="1" oninput="calc()">
+              <span class="unit">ct</span>
+            </div>
+            <div class="row">
+              <label>Listing pack size</label>
+              <input type="number" id="sellPack" value="2" step="1" min="1" oninput="calc()">
+              <span class="unit">ct</span>
+            </div>
+            <div class="row">
+              <label>Packs to order</label>
+              <input type="number" id="qty" value="10" step="1" min="1" oninput="calc()">
+              <span class="unit">packs</span>
+            </div>
+            <div class="row">
+              <label>Existing inventory</label>
+              <input type="number" id="existingUnits" value="0" step="1" min="0" oninput="calc()">
+              <span class="unit">singles</span>
+            </div>
+          </div>
+
+          <div id="validationAlert" class="alert"></div>
+
+          <div class="card cogs-stretch">
+            <p class="section-label">Discount &amp; tax</p>
+            <div class="toggle-row">
+              <input type="checkbox" id="hasDiscount" onchange="toggleDiscount()">
+              <label for="hasDiscount">Apply supplier discount</label>
+            </div>
+            <div class="row" id="discountRow" style="display:none;">
+              <label>Discount</label>
+              <input type="number" id="discount" value="15" step="0.1" min="0" max="100" oninput="calc()">
+              <span class="unit">%</span>
+            </div>
+            <div class="toggle-row" style="margin-top:4px;">
+              <input type="checkbox" id="hasTax" onchange="toggleTax()" checked>
+              <label for="hasTax">Apply sales tax</label>
+            </div>
+            <div class="row" id="taxRow" style="display:flex;">
+              <label>Tax rate</label>
+              <input type="number" id="taxRate" value="8.25" step="0.001" min="0" max="20" oninput="calc()">
+              <span class="unit">%</span>
+            </div>
+          </div>
+
+          <!-- Buttons pushed to bottom of middle column -->
+          <div class="cogs-action-btns">
+            <button class="primary action-btn" id="saveBtn" onclick="saveProduct()">
+              <span class="btn-label">Save</span>
+              <span class="btn-feedback">Saved</span>
+              <span class="btn-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="19" height="19">
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M4 2a2 2 0 00-2 2v16a2 2 0 002 2h16a2 2 0 002-2V6.828a2 2 0 00-.586-1.414l-2.828-2.828A2 2 0 0017.172 2H4zm4 1h6v4H8V3zM5 13h14v7H5v-7z"/>
+                </svg>
+              </span>
+            </button>
+            <button class="clear-action-btn action-btn" id="clearBtn" onclick="clearForm()">
+              <span class="btn-label">Clear</span>
+              <span class="btn-feedback">Cleared</span>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Right: results -->
+        <div class="cogs-right">
+
+          <div class="result-hero">
+            <div>
+              <div class="rlabel">Your COGS &mdash; plug into SellerAmp</div>
+              <div class="rsub" id="heroSub">per listing unit</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="rval" id="heroVal">—</div>
+              <button class="copy-btn action-btn" id="copyBtn" onclick="copyCOGS()">
+                <span class="copy-btn-label">Copy</span>
+                <span class="btn-feedback">Copied</span>
+                <span class="copy-btn-icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                    <path d="M8 7a3 3 0 0 1 3-3h7a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-1v-2h1a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-7a1 1 0 0 0-1 1v1H8V7z"/>
+                    <path d="M6 9a3 3 0 0 1 3-3h7a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V9zm3-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1H9z"/>
+                  </svg>
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div class="results-grid">
+            <div class="metric">
+              <div class="mlabel">Cost per source pack</div>
+              <div class="mval" id="r-packCost">—</div>
+            </div>
+            <div class="metric">
+              <div class="mlabel">Cost per single unit</div>
+              <div class="mval" id="r-perUnit">—</div>
+            </div>
+            <div class="metric">
+              <div class="mlabel">Total singles (w/ inventory)</div>
+              <div class="mval" id="r-totalSingles">—</div>
+            </div>
+            <div class="metric" id="m-listingUnits">
+              <div class="mlabel">Total listing units</div>
+              <div class="mval" id="r-listingUnits">—</div>
+            </div>
+            <div class="metric">
+              <div class="mlabel">Total order cost</div>
+              <div class="mval" id="r-orderCost">—</div>
+            </div>
+            <div class="metric">
+              <div class="mlabel">Leftover single units</div>
+              <div class="mval" id="r-leftover">—</div>
+            </div>
+          </div>
+
+          <div class="breakdown cogs-stretch">
+            <p class="section-label" style="margin-bottom:10px;">Step-by-step breakdown</p>
+            <div class="brow"><span>List price per source pack</span><span id="b-list">—</span></div>
+            <div class="brow deduct" id="b-discRow" style="display:none;"><span id="b-discLabel">— Discount</span><span id="b-disc">—</span></div>
+            <div class="brow add" id="b-taxRow" style="display:flex;"><span id="b-taxLabel">+ Tax</span><span id="b-tax">—</span></div>
+            <div class="brow"><span>= Cost per source pack</span><span id="b-packCost">—</span></div>
+            <div class="divider"></div>
+            <div class="brow op"><span id="b-divLabel">÷ source units</span><span id="b-div">—</span></div>
+            <div class="brow"><span>= Cost per single unit</span><span id="b-perUnit">—</span></div>
+            <div class="brow op"><span id="b-mulLabel">× sell units</span><span id="b-mul">—</span></div>
+            <div class="brow"><span>= COGS per listing unit</span><span id="b-cogs">—</span></div>
+          </div>
+
+        </div>
+
+      </div>
+      </div><!-- /panel-body -->
+    </div>
+  </section>
+
+</main>
+
+<!-- ── Widget scripts ─────────────────────────────────────────────────────── -->
+<script src="widgets/task-manager/script.js"></script>
+<script src="widgets/cogs-calculator/script.js"></script>
+
+<!-- ── Nav panel switching ───────────────────────────────────────────────── -->
+<script>
+  var PANEL_EXIT_MS = 350;
+  var panelSwitchLocked = false;
+  var versionSwitchLocked = false;
+  var PREVIEW_CLASS = 'dashboard-topbar-preview-v2';
+  var VERSION_STORAGE_KEY = 'dashboardVersionSystem_v1';
+  var VERSION_RESTORE_STORAGE_KEY = 'dashboardPreviewRestoreState_v1';
+  var PRODUCTION_RESTORE_STORAGE_KEY = 'dashboardProductionRestoreState_v1';
+  var LEGACY_PREVIEW_STORAGE_KEY = 'dashboardTopbarPreviewMode';
+  var PREVIEW_UPDATE_BATCH_ID = 'ai-preview-batch-2026-04-24-clear-anim-v2';
+  var activeDashboardVersion = 'production';
+  var dashboardVersions = null;
+  var restorablePreviewConfig = null;
+  var restorablePreviewRedoConfig = null;
+  var previewRestoreAvailable = false;
+  var restorableProductionConfig = null;
+  var productionRestoreAvailable = false;
+  var VERSION_FEEDBACK_HOLD_MS = 1350;
+
+  function dashboardVersionDefaults() {
+    return {
+      active: 'production',
+      production: { layout: 'production' },
+      preview: { layout: 'previewTopbar' }
+    };
+  }
+
+  function cloneVersionConfig(config) {
+    return JSON.parse(JSON.stringify(config || { layout: 'production' }));
+  }
+
+  function versionConfigEquals(a, b) {
+    return JSON.stringify(a || {}) === JSON.stringify(b || {});
+  }
+
+  function loadDashboardVersions() {
+    var defaults = dashboardVersionDefaults();
+    try {
+      var saved = JSON.parse(localStorage.getItem(VERSION_STORAGE_KEY) || 'null');
+      if (saved && saved.production && saved.preview) {
+        defaults.production = saved.production;
+        defaults.preview = saved.preview;
+        defaults.preview.layout = 'previewTopbar';
+        defaults.active = saved.active === 'preview' ? 'preview' : 'production';
+        return defaults;
+      }
+      var legacy = localStorage.getItem(LEGACY_PREVIEW_STORAGE_KEY);
+      if (legacy === 'preview') defaults.active = 'preview';
+    } catch (e) {}
+    return defaults;
+  }
+
+  function saveDashboardVersions() {
+    if (!dashboardVersions) return;
+    try {
+      localStorage.setItem(VERSION_STORAGE_KEY, JSON.stringify(dashboardVersions));
+    } catch (e) {}
+  }
+
+  function loadPreviewRestoreState() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(VERSION_RESTORE_STORAGE_KEY) || 'null');
+      if (saved && saved.backup) {
+        restorablePreviewConfig = cloneVersionConfig(saved.backup);
+        restorablePreviewRedoConfig = saved.redo ? cloneVersionConfig(saved.redo) : null;
+        previewRestoreAvailable = saved.available !== false;
+      }
+    } catch (e) {
+      restorablePreviewConfig = null;
+      restorablePreviewRedoConfig = null;
+      previewRestoreAvailable = false;
+    }
+  }
+
+  function savePreviewRestoreState() {
+    try {
+      localStorage.setItem(VERSION_RESTORE_STORAGE_KEY, JSON.stringify({
+        backup: restorablePreviewConfig,
+        redo: restorablePreviewRedoConfig,
+        available: !!previewRestoreAvailable
+      }));
+    } catch (e) {}
+  }
+
+  function loadProductionRestoreState() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(PRODUCTION_RESTORE_STORAGE_KEY) || 'null');
+      if (saved && saved.backup) {
+        restorableProductionConfig = cloneVersionConfig(saved.backup);
+        productionRestoreAvailable = !!saved.available;
+      }
+    } catch (e) {
+      restorableProductionConfig = null;
+      productionRestoreAvailable = false;
+    }
+  }
+
+  function saveProductionRestoreState() {
+    try {
+      localStorage.setItem(PRODUCTION_RESTORE_STORAGE_KEY, JSON.stringify({
+        backup: restorableProductionConfig,
+        available: !!productionRestoreAvailable
+      }));
+    } catch (e) {}
+  }
+
+  function getActiveVersionConfig() {
+    return cloneVersionConfig(dashboardVersions && dashboardVersions[activeDashboardVersion]);
+  }
+
+  function hasUnsavedPreviewChanges() {
+    return !!dashboardVersions && !versionConfigEquals(dashboardVersions.preview, dashboardVersions.production);
+  }
+
+  function hasPreviewRestoreChanges() {
+    return !!dashboardVersions
+      && !!restorablePreviewConfig
+      && previewRestoreAvailable
+      && !versionConfigEquals(dashboardVersions.preview, restorablePreviewConfig);
+  }
+
+  function hasPreviewRedoChanges() {
+    return !!dashboardVersions
+      && !!restorablePreviewConfig
+      && !!restorablePreviewRedoConfig
+      && previewRestoreAvailable
+      && versionConfigEquals(dashboardVersions.preview, restorablePreviewConfig)
+      && !versionConfigEquals(dashboardVersions.preview, restorablePreviewRedoConfig);
+  }
+
+  function syncVersionButtons(versionName) {
+    var isPreview = versionName === 'preview';
+    var prodBtn = document.getElementById('version-production-btn');
+    var previewBtn = document.getElementById('version-preview-btn');
+    if (prodBtn) prodBtn.classList.toggle('active', !isPreview);
+    if (previewBtn) previewBtn.classList.toggle('active', isPreview);
+  }
+
+  function setVersionActionsVisible(isVisible) {
+    var actions = document.getElementById('version-actions');
+    if (!actions) return;
+    actions.classList.toggle('is-visible', !!isVisible);
+    actions.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+  }
+
+  function setPublishRevertVisible(isVisible) {
+    var wrap = document.getElementById('version-publish-revert');
+    if (!wrap) return;
+    wrap.classList.toggle('is-visible', !!isVisible);
+    wrap.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+  }
+
+  function syncUnsavedIndicatorForVersion(versionName) {
+    var unsaved = document.getElementById('version-unsaved');
+    if (!unsaved) return;
+    unsaved.classList.toggle('is-visible', versionName === 'preview' && hasUnsavedPreviewChanges());
+  }
+
+  function setRevertButtonState() {
+    var btn = document.getElementById('reset-preview-btn');
+    if (!btn) return;
+    var label = btn.querySelector('.version-action-label');
+    var feedback = btn.querySelector('.version-action-feedback');
+    var canRevert = hasPreviewRestoreChanges();
+    var canRestore = hasPreviewRedoChanges();
+    if (label && !btn.classList.contains('is-feedback')) {
+      label.textContent = canRestore ? 'Restore Changes' : 'Revert Changes';
+    }
+    if (feedback) feedback.textContent = 'Preview reverted';
+    btn.disabled = activeDashboardVersion !== 'preview' || (!canRevert && !canRestore);
+    btn.classList.toggle('is-restore', canRestore);
+  }
+
+  function showRevertButtonFeedback(message) {
+    var btn = document.getElementById('reset-preview-btn');
+    if (!btn) return;
+    var feedback = btn.querySelector('.version-action-feedback');
+    if (feedback) feedback.textContent = message;
+    btn.classList.add('is-feedback');
+    clearTimeout(btn._revertTimer);
+    btn._revertTimer = setTimeout(function() {
+      btn.classList.remove('is-feedback');
+      setRevertButtonState();
+    }, VERSION_FEEDBACK_HOLD_MS);
+  }
+
+  function setPublishRevertButtonState() {
+    var btn = document.getElementById('revert-publish-btn');
+    if (!btn) return;
+    var canRevertPublish = activeDashboardVersion === 'production' && !!restorableProductionConfig && productionRestoreAvailable;
+    btn.disabled = !canRevertPublish;
+    setPublishRevertVisible(canRevertPublish || btn.classList.contains('is-feedback'));
+  }
+
+  function showPublishRevertFeedback(message, onDone) {
+    var btn = document.getElementById('revert-publish-btn');
+    if (!btn) {
+      if (typeof onDone === 'function') onDone();
+      return;
+    }
+    var feedback = btn.querySelector('.version-action-feedback');
+    if (feedback) feedback.textContent = message;
+    setPublishRevertVisible(true);
+    btn.classList.add('is-feedback');
+    clearTimeout(btn._publishRevertTimer);
+    btn._publishRevertTimer = setTimeout(function() {
+      btn.classList.remove('is-feedback');
+      if (typeof onDone === 'function') onDone();
+      setPublishRevertButtonState();
+    }, VERSION_FEEDBACK_HOLD_MS);
+  }
+
+  function syncVersionChrome() {
+    var isPreview = activeDashboardVersion === 'preview';
+    syncVersionButtons(activeDashboardVersion);
+    syncUnsavedIndicatorForVersion(activeDashboardVersion);
+    setVersionActionsVisible(isPreview);
+    setRevertButtonState();
+    setPublishRevertButtonState();
+  }
+
+  function applyDashboardVersionConfig(config) {
+    document.body.classList.toggle(PREVIEW_CLASS, !!config && config.layout === 'previewTopbar');
+    var isReverted = activeDashboardVersion === 'preview' && !!config && config.aiBatchId !== PREVIEW_UPDATE_BATCH_ID;
+    document.body.classList.toggle('preview-update-reverted', isReverted);
+    var medOptionText = isReverted ? 'MED' : 'Medium';
+    document.querySelectorAll('.add-priority-select option[value="medium"]').forEach(function(opt) {
+      opt.textContent = medOptionText;
+    });
+    syncVersionChrome();
+  }
+
+  function markPreviewChanged(nextConfig) {
+    if (!dashboardVersions || activeDashboardVersion !== 'preview') return;
+    dashboardVersions.preview = cloneVersionConfig(nextConfig || getActiveVersionConfig());
+    saveDashboardVersions();
+    applyDashboardVersionConfig(dashboardVersions.preview);
+    syncVersionChrome();
+  }
+
+  function renderDashboardVersionAfterSwitch(activePanel) {
+    _donutAnimated = false;
+    var dashboard = document.querySelector('#panel-task-manager .dashboard');
+    if (dashboard) {
+      dashboard.classList.remove('dashboard-enter');
+      dashboard.classList.add('dashboard-pre-enter');
+    }
+    renderDashboard(getData());
+    document.querySelector('.main-content').scrollTop = 0;
+    void activePanel.offsetWidth;
+    activePanel.classList.add('active');
+    versionSwitchLocked = false;
+    if (activePanel.id === 'panel-task-manager' && window.triggerTaskDashboardEntrance) window.triggerTaskDashboardEntrance();
+  }
+
+  function setDashboardVersion(versionName) {
+    var nextVersion = versionName === 'preview' ? 'preview' : 'production';
+    if (!dashboardVersions) dashboardVersions = loadDashboardVersions();
+    var activePanel = document.querySelector('.panel.active');
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (nextVersion === activeDashboardVersion) {
+      syncVersionChrome();
+      return;
+    }
+
+    if (!versionSwitchLocked) syncVersionButtons(nextVersion);
+
+    if (activeDashboardVersion === 'preview' && nextVersion === 'production') {
+      syncUnsavedIndicatorForVersion(nextVersion);
+      setVersionActionsVisible(false);
+      setPublishRevertVisible(false);
+    } else if (activeDashboardVersion === 'production' && nextVersion === 'preview') {
+      setPublishRevertVisible(false);
+      syncUnsavedIndicatorForVersion(nextVersion);
+      setRevertButtonState();
+      setVersionActionsVisible(true);
+    }
+
+    if (!activePanel || reduceMotion || versionSwitchLocked) {
+      activeDashboardVersion = nextVersion;
+      dashboardVersions.active = activeDashboardVersion;
+      saveDashboardVersions();
+      applyDashboardVersionConfig(dashboardVersions[activeDashboardVersion]);
+      if (activePanel && activePanel.id === 'panel-task-manager') {
+        _donutAnimated = false;
+        renderDashboard(getData());
+        if (window.triggerTaskDashboardEntrance) window.triggerTaskDashboardEntrance();
+      }
+      return;
+    }
+
+    versionSwitchLocked = true;
+    activePanel.classList.add('panel-out');
+    activePanel.classList.remove('active');
+
+    setTimeout(function() {
+      activePanel.classList.remove('panel-out');
+      activeDashboardVersion = nextVersion;
+      dashboardVersions.active = activeDashboardVersion;
+      saveDashboardVersions();
+      applyDashboardVersionConfig(dashboardVersions[activeDashboardVersion]);
+      renderDashboardVersionAfterSwitch(activePanel);
+    }, PANEL_EXIT_MS);
+  }
+
+  function publishPreview() {
+    if (!dashboardVersions || activeDashboardVersion !== 'preview') return;
+    restorableProductionConfig = cloneVersionConfig(dashboardVersions.production);
+    productionRestoreAvailable = true;
+    saveProductionRestoreState();
+    dashboardVersions.production = cloneVersionConfig(dashboardVersions.preview);
+    saveDashboardVersions();
+    setDashboardVersion('production');
+  }
+
+  function revertPublish() {
+    if (!dashboardVersions || activeDashboardVersion !== 'production') return;
+    if (!restorableProductionConfig || !productionRestoreAvailable) {
+      setPublishRevertButtonState();
+      return;
+    }
+    var activePanel = document.querySelector('.panel.active');
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function finishRevertPublish() {
+      dashboardVersions.production = cloneVersionConfig(restorableProductionConfig);
+      saveDashboardVersions();
+      applyDashboardVersionConfig(dashboardVersions.production);
+      _donutAnimated = false;
+      renderDashboard(getData());
+      if (activePanel) {
+        document.querySelector('.main-content').scrollTop = 0;
+        activePanel.classList.add('active');
+      }
+      versionSwitchLocked = false;
+      if (activePanel && activePanel.id === 'panel-task-manager' && window.triggerTaskDashboardEntrance) {
+        window.triggerTaskDashboardEntrance();
+      }
+      showPublishRevertFeedback('Publish reverted', function() {
+        productionRestoreAvailable = false;
+        saveProductionRestoreState();
+      });
+    }
+    if (!activePanel || reduceMotion || versionSwitchLocked) {
+      finishRevertPublish();
+      return;
+    }
+    versionSwitchLocked = true;
+    activePanel.classList.add('panel-out');
+    activePanel.classList.remove('active');
+    setTimeout(function() {
+      activePanel.classList.remove('panel-out');
+      finishRevertPublish();
+    }, PANEL_EXIT_MS);
+  }
+
+  function resetPreview() {
+    if (!dashboardVersions || activeDashboardVersion !== 'preview') return;
+    if (hasPreviewRedoChanges()) {
+      dashboardVersions.preview = cloneVersionConfig(restorablePreviewRedoConfig);
+      saveDashboardVersions();
+      applyDashboardVersionConfig(dashboardVersions.preview);
+      _donutAnimated = false;
+      renderDashboard(getData());
+      if (window.triggerTaskDashboardEntrance) window.triggerTaskDashboardEntrance();
+      showRevertButtonFeedback('Changes restored');
+      savePreviewRestoreState();
+      return;
+    }
+    if (hasPreviewRestoreChanges()) {
+      restorablePreviewRedoConfig = cloneVersionConfig(dashboardVersions.preview);
+      dashboardVersions.preview = cloneVersionConfig(restorablePreviewConfig);
+      saveDashboardVersions();
+      applyDashboardVersionConfig(dashboardVersions.preview);
+      _donutAnimated = false;
+      renderDashboard(getData());
+      if (window.triggerTaskDashboardEntrance) window.triggerTaskDashboardEntrance();
+      showRevertButtonFeedback('Preview reverted');
+      savePreviewRestoreState();
+      return;
+    }
+    setRevertButtonState();
+  }
+
+  function savePreviewUpdateSnapshot() {
+    if (!dashboardVersions || !dashboardVersions.preview) return;
+    if (dashboardVersions.preview.aiBatchId !== PREVIEW_UPDATE_BATCH_ID) {
+      restorablePreviewConfig = cloneVersionConfig(dashboardVersions.preview);
+      restorablePreviewRedoConfig = null;
+      previewRestoreAvailable = true;
+      dashboardVersions.preview.aiBatchId = PREVIEW_UPDATE_BATCH_ID;
+      saveDashboardVersions();
+      savePreviewRestoreState();
+    }
+  }
+
+  (function initDashboardVersionSystem() {
+    dashboardVersions = loadDashboardVersions();
+    loadPreviewRestoreState();
+    loadProductionRestoreState();
+    savePreviewUpdateSnapshot();
+    activeDashboardVersion = dashboardVersions.active === 'preview' ? 'preview' : 'production';
+    applyDashboardVersionConfig(dashboardVersions[activeDashboardVersion]);
+  })();
+
+  if (!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+    setTimeout(function() {
+      requestAnimationFrame(function() {
+        document.body.classList.remove('app-preload');
+        document.body.classList.add('app-ready');
+        if (window.triggerTaskDashboardEntrance) window.triggerTaskDashboardEntrance();
+      });
+    }, PANEL_EXIT_MS);
+  } else {
+    document.body.classList.remove('app-preload');
+    document.body.classList.add('app-ready');
+  }
+
+  document.querySelectorAll('.nav-item[data-panel]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var panelId = 'panel-' + this.dataset.panel;
+      var newPanel = document.getElementById(panelId);
+      var curPanel = document.querySelector('.panel.active');
+      if (curPanel === newPanel || panelSwitchLocked) return;
+
+      document.querySelectorAll('.nav-item').forEach(function(b) { b.classList.remove('active'); });
+      this.classList.add('active');
+
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        if (curPanel) curPanel.classList.remove('active');
+        newPanel.classList.add('active');
+        document.querySelector('.main-content').scrollTop = 0;
+        return;
+      }
+
+      panelSwitchLocked = true;
+
+      if (panelId === 'panel-task-manager') {
+        var taskDash = document.querySelector('#panel-task-manager .dashboard');
+        if (taskDash) {
+          taskDash.classList.remove('dashboard-enter');
+          taskDash.classList.add('dashboard-pre-enter');
+        }
+      }
+
+      if (curPanel) {
+        curPanel.classList.add('panel-out');
+        curPanel.classList.remove('active');
+      }
+
+      setTimeout(function() {
+        if (curPanel) curPanel.classList.remove('panel-out');
+        newPanel.classList.add('active');
+        document.querySelector('.main-content').scrollTop = 0;
+        panelSwitchLocked = false;
+        if (panelId === 'panel-task-manager') {
+          _donutAnimated = false;
+          renderDashboard(getData());
+          if (window.triggerTaskDashboardEntrance) window.triggerTaskDashboardEntrance();
+        }
+      }, PANEL_EXIT_MS);
+    });
+  });
+
+  document.querySelectorAll('.version-option[data-version]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      setDashboardVersion(this.dataset.version);
+    });
+  });
+
+  var publishBtn = document.getElementById('publish-preview-btn');
+  if (publishBtn) publishBtn.addEventListener('click', publishPreview);
+
+  var resetBtn = document.getElementById('reset-preview-btn');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', resetPreview);
+  }
+
+  var revertPublishBtn = document.getElementById('revert-publish-btn');
+  if (revertPublishBtn) {
+    revertPublishBtn.addEventListener('click', revertPublish);
+  }
+
+  window.setDashboardVersion = setDashboardVersion;
+  window.publishDashboardPreview = publishPreview;
+  window.resetDashboardPreview = resetPreview;
+  window.updatePreviewDashboardConfig = markPreviewChanged;
+</script>
+
+</body>
+</html>

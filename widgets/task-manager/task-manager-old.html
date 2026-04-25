@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Manager</title>
+<style>
+  :root {
+    --bg:           #1a1a1a;
+    --surface:      #242424;
+    --surface-2:    #2e2e2e;
+    --border:       #333333;
+    --border-input: #383838;
+    --text-primary: #e8e8e6;
+    --text-muted:   #aaaaaa;
+    --text-hint:    #666666;
+    --green:        #1D9E75;
+    --green-light:  #5DCAA5;
+    --green-bg:     #0d2b22;
+    --red:          #E24B4A;
+    --amber:        #EF9F27;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    padding: 2rem 1.5rem;
+    color: var(--text-primary);
+  }
+  .app-wrap { max-width: 1440px; margin: 0 auto; }
+
+  /* ── Header ── */
+  .app-header { margin-bottom: 1.25rem; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: var(--text-muted); }
+
+  /* ── Dashboard ── */
+  .dashboard {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .dashboard-chart { flex-shrink: 0; }
+  .dash-legend { display: flex; flex-direction: column; gap: 8px; }
+  .dash-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    min-width: 130px;
+  }
+  .dash-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dash-legend-count { font-weight: 600; color: var(--text-primary); margin-left: auto; }
+  .dash-divider { width: 1px; background: var(--border); align-self: stretch; flex-shrink: 0; }
+  .dash-alerts { display: flex; flex-direction: column; gap: 8px; }
+  .dash-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    white-space: nowrap;
+    min-width: 140px;
+  }
+  .dash-pill-count { font-size: 20px; font-weight: 700; line-height: 1; }
+  .dash-pill.overdue { background: rgba(226,75,74,0.1); border: 1px solid rgba(226,75,74,0.28); color: var(--red); }
+  .dash-pill.today   { background: rgba(239,159,39,0.1); border: 1px solid rgba(239,159,39,0.28); color: var(--amber); }
+  .dash-pill.dim     { opacity: 0.4; }
+
+  /* ── Three-column grid ── */
+  .columns-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    align-items: start;
+  }
+  @media (max-width: 860px)  { .columns-grid { grid-template-columns: 1fr; } }
+  @media (min-width: 861px) and (max-width: 1100px) {
+    .columns-grid { grid-template-columns: repeat(2, 1fr); }
+    .col:first-child { grid-column: 1 / -1; }
+  }
+
+  /* ── Column card ── */
+  .col {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+  }
+  .col-header {
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .col-title { font-size: 15px; font-weight: 600; flex: 1; }
+  .col-badge {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--green-bg);
+    color: var(--green-light);
+    border-radius: 10px;
+    padding: 2px 7px;
+    min-width: 22px;
+  }
+  .col-add {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 6px;
+  }
+  .col-add input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 9px;
+    border: 1px solid var(--border-input);
+    border-radius: 7px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--surface-2);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .col-add input[type="text"]:focus { border-color: var(--green); }
+  .col-add input[type="text"]::placeholder { color: var(--text-hint); }
+  .col-add-btn {
+    padding: 6px 12px;
+    background: var(--green);
+    color: #fff;
+    border: 1px solid var(--green);
+    border-radius: 7px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+  }
+  .col-add-btn:hover { opacity: 0.85; }
+  .col-stats {
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-hint);
+  }
+  .col-stats .pend strong { color: var(--amber); }
+  .col-stats .done strong { color: var(--green-light); }
+  .clear-btn {
+    margin-left: auto;
+    font-size: 11px;
+    padding: 2px 7px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-hint);
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .clear-btn:hover { color: var(--red); border-color: var(--red); }
+  .col-tasks {
+    padding: 8px;
+    overflow-y: auto;
+    max-height: 70vh;
+    flex: 1;
+  }
+
+  /* ── Task card ── */
+  .task-item {
+    position: relative;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 28px 7px 9px;
+    margin-bottom: 5px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .task-item:last-child { margin-bottom: 0; }
+  .task-item.done-item { opacity: 0.5; }
+  .task-item.overdue   { border-color: rgba(226,75,74,0.45); background: rgba(226,75,74,0.04); }
+  .task-item.due-today { border-color: rgba(239,159,39,0.4);  background: rgba(239,159,39,0.03); }
+
+  /* Delete X — top-right corner */
+  .del-x {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--text-hint);
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 3px;
+    padding: 0;
+    transition: color 0.15s, background 0.15s;
+    font-family: inherit;
+  }
+  .del-x:hover { color: var(--red); background: rgba(226,75,74,0.12); }
+
+  /* Task layout */
+  .task-main { display: flex; align-items: flex-start; gap: 7px; }
+  .task-check {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    accent-color: var(--green);
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+  .task-body { flex: 1; min-width: 0; }
+
+  /* Title row — title + due date side by side */
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Editable title */
+  .title-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 1.4;
+    outline: none;
+    padding: 0;
+  }
+  .title-input.done { text-decoration: line-through; color: var(--text-hint); }
+  .title-input:focus {
+    border-bottom: 1px solid var(--border-input);
+    margin-bottom: -1px;
+  }
+
+  /* Meta row — priority and notes icon only */
+  .task-meta {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+    flex-wrap: wrap;
+  }
+
+  /* Priority badge */
+  .pri-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 1px 6px;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    flex-shrink: 0;
+    user-select: none;
+    transition: opacity 0.15s;
+  }
+  .pri-badge:hover { opacity: 0.65; }
+  .pri-low    { background: rgba(102,102,102,0.2); color: #888; }
+  .pri-medium { background: rgba(239,159,39,0.18); color: var(--amber); }
+  .pri-high   { background: rgba(226,75,74,0.18);  color: var(--red); }
+
+  /* Calendar date chip — in title row, right-aligned */
+  .date-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    color: var(--text-hint);
+    flex-shrink: 0;
+    transition: color 0.15s;
+    user-select: none;
+  }
+  .date-chip:hover { color: var(--text-muted); }
+  .due-text {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .due-text.overdue { color: var(--red); }
+  .due-text.today   { color: var(--amber); }
+  .due-text.future  { color: var(--text-muted); }
+  /* Hidden date input — zero-size, triggered via JS */
+  .date-hidden-input {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+    color-scheme: dark;
+  }
+
+  /* Notes icon button */
+  .notes-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--text-hint);
+    flex-shrink: 0;
+    transition: color 0.15s;
+  }
+  .notes-icon-btn:hover { color: var(--text-muted); }
+  .notes-icon-btn.has-note { color: var(--green); }
+
+  /* Note display text */
+  .note-display {
+    font-size: 11px;
+    color: #c8c8c6;
+    line-height: 1.45;
+    margin-top: 4px;
+    word-break: break-word;
+    font-style: italic;
+    padding-left: 1px;
+  }
+
+  /* Notes textarea (edit mode) */
+  .notes-edit {
+    display: none;
+    width: 100%;
+    margin-top: 5px;
+    min-height: 48px;
+    resize: vertical;
+    padding: 5px 8px;
+    border: 1px solid var(--border-input);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text-primary);
+    font-size: 11px;
+    font-family: inherit;
+    line-height: 1.5;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .notes-edit.open { display: block; }
+  .notes-edit:focus { border-color: var(--green); }
+  .notes-edit::placeholder { color: var(--text-hint); }
+
+  /* Empty state */
+  .empty-state { font-size: 13px; color: var(--text-hint); text-align: center; padding: 18px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app-wrap">
+
+  <div class="app-header">
+    <h1>Task manager</h1>
+    <p class="sub">Life, work, and PD Essentials &mdash; sorted by priority then due date. Click any title to edit.</p>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="dashboard">
+    <div class="dashboard-chart">
+      <svg viewBox="0 0 120 120" width="90" height="90" style="display:block;">
+        <g id="donut-segs">
+          <circle cx="60" cy="60" r="46" fill="none" stroke="#2e2e2e" stroke-width="18"/>
+        </g>
+        <text x="60" y="56" text-anchor="middle" fill="#e8e8e6" font-size="20" font-weight="700"
+              font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" id="donut-total">0</text>
+        <text x="60" y="69" text-anchor="middle" fill="#666666" font-size="9"
+              font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">open</text>
+      </svg>
+    </div>
+    <div class="dash-legend">
+      <div class="dash-legend-row">
+        <span class="dash-dot" style="background:#E24B4A;"></span>High
+        <span class="dash-legend-count" id="leg-high">0</span>
+      </div>
+      <div class="dash-legend-row">
+        <span class="dash-dot" style="background:#EF9F27;"></span>Medium
+        <span class="dash-legend-count" id="leg-medium">0</span>
+      </div>
+      <div class="dash-legend-row">
+        <span class="dash-dot" style="background:#666666;"></span>Low
+        <span class="dash-legend-count" id="leg-low">0</span>
+      </div>
+    </div>
+    <div class="dash-divider"></div>
+    <div class="dash-alerts">
+      <div class="dash-pill overdue" id="pill-overdue">
+        <span class="dash-pill-count" id="cnt-overdue">0</span>overdue
+      </div>
+      <div class="dash-pill today" id="pill-today">
+        <span class="dash-pill-count" id="cnt-today">0</span>due today
+      </div>
+    </div>
+  </div>
+
+  <!-- Three columns -->
+  <div class="columns-grid">
+
+    <div class="col">
+      <div class="col-header">
+        <span class="col-title">Life</span>
+        <span class="col-badge" id="badge-life"></span>
+      </div>
+      <div class="col-add">
+        <input type="text" id="input-life" placeholder="Add a task..."
+               onkeydown="if(event.key==='Enter')addTask('life')">
+        <button class="col-add-btn" onclick="addTask('life')">Add</button>
+      </div>
+      <div class="col-stats">
+        <span class="pend"><strong id="pend-life">0</strong> pending</span>
+        <span class="done"><strong id="done-life">0</strong> done</span>
+        <button class="clear-btn" onclick="clearDone('life')">Clear done</button>
+      </div>
+      <div class="col-tasks" id="tasks-life"></div>
+    </div>
+
+    <div class="col">
+      <div class="col-header">
+        <span class="col-title">Work</span>
+        <span class="col-badge" id="badge-work"></span>
+      </div>
+      <div class="col-add">
+        <input type="text" id="input-work" placeholder="Add a task..."
+               onkeydown="if(event.key==='Enter')addTask('work')">
+        <button class="col-add-btn" onclick="addTask('work')">Add</button>
+      </div>
+      <div class="col-stats">
+        <span class="pend"><strong id="pend-work">0</strong> pending</span>
+        <span class="done"><strong id="done-work">0</strong> done</span>
+        <button class="clear-btn" onclick="clearDone('work')">Clear done</button>
+      </div>
+      <div class="col-tasks" id="tasks-work"></div>
+    </div>
+
+    <div class="col">
+      <div class="col-header">
+        <span class="col-title">PD Essentials</span>
+        <span class="col-badge" id="badge-pd"></span>
+      </div>
+      <div class="col-add">
+        <input type="text" id="input-pd" placeholder="Add a task..."
+               onkeydown="if(event.key==='Enter')addTask('pd')">
+        <button class="col-add-btn" onclick="addTask('pd')">Add</button>
+      </div>
+      <div class="col-stats">
+        <span class="pend"><strong id="pend-pd">0</strong> pending</span>
+        <span class="done"><strong id="done-pd">0</strong> done</span>
+        <button class="clear-btn" onclick="clearDone('pd')">Clear done</button>
+      </div>
+      <div class="col-tasks" id="tasks-pd"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+var STORAGE_KEY = 'taskmanager_v2';
+var openNotes = {};
+
+// SVG icons (defined once, reused in template strings)
+var ICON_CAL  = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="3" width="13" height="11.5" rx="1.5"/><path d="M5 1.5V4M11 1.5V4M1.5 7h13"/></svg>';
+var ICON_NOTE = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="1.5" width="11" height="13" rx="1.5"/><path d="M5 5.5h6M5 8.5h6M5 11.5h3.5"/></svg>';
+
+// ── Data ──────────────────────────────────────────────────────────────────────
+
+function getData() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || { life:[], work:[], pd:[] }; }
+  catch(e) { return { life:[], work:[], pd:[] }; }
+}
+function saveData(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+function genId() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+function find(arr, id) { return (arr||[]).find(function(t){ return t.id===id; }); }
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Date helpers ──────────────────────────────────────────────────────────────
+
+function todayISO() {
+  var d = new Date();
+  return d.getFullYear() + '-'
+    + String(d.getMonth()+1).padStart(2,'0') + '-'
+    + String(d.getDate()).padStart(2,'0');
+}
+function fmtISO(iso) {
+  if (!iso) return '';
+  var p = iso.split('-');
+  return new Date(+p[0], +p[1]-1, +p[2])
+    .toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+function isOverdue(t)  { return !t.done && !!t.dueDate && t.dueDate < todayISO(); }
+function isDueToday(t) { return !t.done && !!t.dueDate && t.dueDate === todayISO(); }
+
+// ── Sorting ───────────────────────────────────────────────────────────────────
+
+function sortedTasks(tasks) {
+  var pri = { high:0, medium:1, low:2 };
+  return tasks.slice().sort(function(a, b) {
+    // Done tasks always sink to bottom
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    // Among done: alphabetical
+    if (a.done && b.done) return (a.text||'').localeCompare(b.text||'');
+    // Priority high→low
+    var pa = pri[a.priority||'medium'], pb = pri[b.priority||'medium'];
+    if (pa !== pb) return pa - pb;
+    // Due date soonest first; no date sinks below tasks that have one
+    var da = a.dueDate || 'zzzz', db = b.dueDate || 'zzzz';
+    if (da !== db) return da < db ? -1 : 1;
+    // Alphabetical tiebreak
+    return (a.text||'').localeCompare(b.text||'');
+  });
+}
+
+// ── Migration from v1 ─────────────────────────────────────────────────────────
+
+function migrateIfNeeded() {
+  if (localStorage.getItem(STORAGE_KEY)) return;
+  var old = localStorage.getItem('taskmanager_v1');
+  if (!old) return;
+  try {
+    var data = JSON.parse(old);
+    ['life','work','pd'].forEach(function(tab) {
+      (data[tab]||[]).forEach(function(task) {
+        task.priority = task.priority || 'medium';
+        task.dueDate  = task.dueDate  || null;
+        task.notes    = task.notes    || '';
+        if (!task.children) task.children = [];
+      });
+    });
+    saveData(data);
+  } catch(e) {}
+}
+
+// ── Task operations ───────────────────────────────────────────────────────────
+
+function addTask(tab) {
+  var inp = document.getElementById('input-'+tab);
+  var text = inp.value.trim();
+  if (!text) return;
+  var data = getData();
+  if (!data[tab]) data[tab] = [];
+  data[tab].push({
+    id: genId(), text: text, done: false,
+    priority: 'medium', dueDate: null, notes: '',
+    children: []
+  });
+  saveData(data);
+  inp.value = '';
+  render();
+}
+
+function toggleTask(tab, id) {
+  var data = getData();
+  var t = find(data[tab], id);
+  if (t) t.done = !t.done;
+  saveData(data); render();
+}
+
+function deleteTask(tab, id) {
+  var data = getData();
+  data[tab] = (data[tab]||[]).filter(function(t){ return t.id!==id; });
+  delete openNotes[id];
+  saveData(data); render();
+}
+
+function clearDone(tab) {
+  var data = getData();
+  data[tab] = (data[tab]||[]).filter(function(t){ return !t.done; });
+  saveData(data); render();
+}
+
+function saveTitle(tab, id, val) {
+  var text = val.trim();
+  if (!text) return;
+  var data = getData();
+  var t = find(data[tab], id);
+  if (t && t.text !== text) { t.text = text; saveData(data); }
+  render();
+}
+
+function cyclePriority(tab, id) {
+  var order = ['low','medium','high'];
+  var data = getData();
+  var t = find(data[tab], id);
+  if (!t) return;
+  t.priority = order[(order.indexOf(t.priority||'medium')+1)%3];
+  saveData(data); render();
+}
+
+function saveDueDate(tab, id, val) {
+  var data = getData();
+  var t = find(data[tab], id);
+  if (t) t.dueDate = val || null;
+  saveData(data); render();
+}
+
+function openDatePicker(taskId) {
+  var input = document.getElementById('dp-'+taskId);
+  if (!input) return;
+  try { input.showPicker(); } catch(e) { input.click(); }
+}
+
+function toggleNotes(taskId) {
+  openNotes[taskId] = !openNotes[taskId];
+  render();
+  if (openNotes[taskId]) {
+    setTimeout(function(){
+      var ta = document.getElementById('notes-'+taskId);
+      if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    }, 30);
+  }
+}
+
+function saveNotes(tab, id, val) {
+  var data = getData();
+  var t = find(data[tab], id);
+  if (t) t.notes = val;
+  saveData(data);
+  openNotes[id] = false;
+  render();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+
+function render() {
+  var data = getData();
+  renderDashboard(data);
+  ['life','work','pd'].forEach(function(tab){ renderColumn(data, tab); });
+}
+
+function renderColumn(data, tab) {
+  var tasks   = data[tab] || [];
+  var pending = tasks.filter(function(t){ return !t.done; }).length;
+  var done    = tasks.filter(function(t){ return  t.done; }).length;
+
+  var badge = document.getElementById('badge-'+tab);
+  if (badge) { badge.textContent = pending; badge.style.display = pending>0?'inline-flex':'none'; }
+  var pEl = document.getElementById('pend-'+tab), dEl = document.getElementById('done-'+tab);
+  if (pEl) pEl.textContent = pending;
+  if (dEl) dEl.textContent = done;
+
+  var container = document.getElementById('tasks-'+tab);
+  if (!container) return;
+  if (tasks.length === 0) {
+    container.innerHTML = '<p class="empty-state">No tasks yet.</p>';
+    return;
+  }
+
+  container.innerHTML = sortedTasks(tasks).map(function(task) {
+    var ovr = isOverdue(task), tdy = isDueToday(task) && !ovr;
+    var pri = task.priority || 'medium';
+
+    // Card classes
+    var ic = 'task-item'
+      + (task.done  ? ' done-item' : '')
+      + (ovr        ? ' overdue'   : '')
+      + (tdy        ? ' due-today' : '');
+
+    // Priority label
+    var priLabel = pri.charAt(0).toUpperCase() + pri.slice(1);
+
+    // Due date chip — lives in the title row, right side
+    var dueDateText = '';
+    if (task.dueDate) {
+      var dateClass = ovr ? ' overdue' : (tdy ? ' today' : ' future');
+      dueDateText = '<span class="due-text'+dateClass+'">'+fmtISO(task.dueDate)+'</span>';
+    }
+    var dateChip = '<div class="date-chip" onclick="openDatePicker(\''+task.id+'\')" title="'+(task.dueDate?'Change due date':'Set due date')+'">'
+      + dueDateText
+      + ICON_CAL
+      + '</div>'
+      + '<input type="date" id="dp-'+task.id+'" class="date-hidden-input" value="'+escHtml(task.dueDate||'')+'"'
+      + ' onchange="saveDueDate(\''+tab+'\',\''+task.id+'\',this.value)">';
+
+    // Notes icon
+    var hasNote = !!(task.notes && task.notes.trim());
+    var notesBtnClass = 'notes-icon-btn' + (hasNote ? ' has-note' : '');
+    var notesIconBtn = '<button class="'+notesBtnClass+'" onclick="toggleNotes(\''+task.id+'\')" title="'+(hasNote?'Edit note':'Add note')+'">'
+      + ICON_NOTE
+      + '</button>';
+
+    // Note display (always shown if note exists and not editing)
+    var noteDisplay = '';
+    if (hasNote && !openNotes[task.id]) {
+      noteDisplay = '<div class="note-display">'+escHtml(task.notes)+'</div>';
+    }
+
+    // Notes textarea (edit mode)
+    var notesEdit = '<textarea class="notes-edit'+(openNotes[task.id]?' open':'')+'"'
+      + ' id="notes-'+task.id+'" placeholder="Add a note..."'
+      + ' onblur="saveNotes(\''+tab+'\',\''+task.id+'\',this.value)">'+escHtml(task.notes||'')+'</textarea>';
+
+    return '<div class="'+ic+'" data-id="'+task.id+'">'
+      + '<button class="del-x" onclick="deleteTask(\''+tab+'\',\''+task.id+'\')" title="Remove task">&#215;</button>'
+      + '<div class="task-main">'
+      +   '<input type="checkbox" class="task-check"'+(task.done?' checked':'')
+      +    ' onchange="toggleTask(\''+tab+'\',\''+task.id+'\')">'
+      +   '<div class="task-body">'
+      +     '<div class="title-row">'
+      +       '<input type="text" class="title-input'+(task.done?' done':'')+'"'
+      +        ' value="'+escHtml(task.text)+'"'
+      +        ' onblur="saveTitle(\''+tab+'\',\''+task.id+'\',this.value)"'
+      +        ' onkeydown="if(event.key===\'Enter\')this.blur()">'
+      +       dateChip
+      +     '</div>'
+      +     '<div class="task-meta">'
+      +       '<button class="pri-badge pri-'+pri+'" onclick="cyclePriority(\''+tab+'\',\''+task.id+'\')" title="Click to change priority">'+priLabel+'</button>'
+      +       notesIconBtn
+      +     '</div>'
+      +     noteDisplay
+      +     notesEdit
+      +   '</div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+// ── Dashboard + Donut ─────────────────────────────────────────────────────────
+
+function renderDashboard(data) {
+  var today = todayISO();
+  var allOpen = ['life','work','pd'].reduce(function(acc, tab){
+    return acc.concat((data[tab]||[]).filter(function(t){ return !t.done; }));
+  }, []);
+  var total    = allOpen.length;
+  var overdue  = allOpen.filter(function(t){ return t.dueDate && t.dueDate < today; }).length;
+  var dueToday = allOpen.filter(function(t){ return t.dueDate && t.dueDate === today; }).length;
+  var byPri    = { low:0, medium:0, high:0 };
+  allOpen.forEach(function(t){ byPri[t.priority||'medium']++; });
+
+  // Donut
+  var segsEl = document.getElementById('donut-segs');
+  var totEl  = document.getElementById('donut-total');
+  if (totEl) totEl.textContent = total;
+  if (segsEl) {
+    var C = 2 * Math.PI * 46;
+    if (total === 0) {
+      segsEl.innerHTML = '<circle cx="60" cy="60" r="46" fill="none" stroke="#2e2e2e" stroke-width="18"/>';
+    } else {
+      var segs = [
+        { count: byPri.high,   color: '#E24B4A' },
+        { count: byPri.medium, color: '#EF9F27' },
+        { count: byPri.low,    color: '#666666'  }
+      ];
+      var html = '', offset = 0;
+      segs.forEach(function(seg) {
+        if (seg.count === 0) return;
+        var dash = (seg.count / total) * C;
+        html += '<circle cx="60" cy="60" r="46" fill="none"'
+          + ' stroke="'+seg.color+'" stroke-width="18"'
+          + ' stroke-dasharray="'+dash.toFixed(2)+' '+(C-dash).toFixed(2)+'"'
+          + ' stroke-dashoffset="'+(-offset).toFixed(2)+'"'
+          + ' transform="rotate(-90 60 60)"/>';
+        offset += dash;
+      });
+      segsEl.innerHTML = html;
+    }
+  }
+
+  var el;
+  el = document.getElementById('leg-high');   if(el) el.textContent = byPri.high;
+  el = document.getElementById('leg-medium'); if(el) el.textContent = byPri.medium;
+  el = document.getElementById('leg-low');    if(el) el.textContent = byPri.low;
+  el = document.getElementById('cnt-overdue'); if(el) el.textContent = overdue;
+  el = document.getElementById('cnt-today');   if(el) el.textContent = dueToday;
+  el = document.getElementById('pill-overdue'); if(el) el.classList.toggle('dim', overdue === 0);
+  el = document.getElementById('pill-today');   if(el) el.classList.toggle('dim', dueToday === 0);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+migrateIfNeeded();
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pack Split COGS Calculator</title>
+<style>
+  :root {
+    --bg:           #1a1a1a;
+    --surface:      #242424;
+    --surface-2:    #2e2e2e;
+    --border:       #333333;
+    --border-input: #383838;
+    --text-primary: #e8e8e6;
+    --text-muted:   #aaaaaa;
+    --text-hint:    #666666;
+    --green:        #1D9E75;
+    --green-light:  #5DCAA5;
+    --green-bg:     #0d2b22;
+    --red:          #E24B4A;
+    --amber:        #EF9F27;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    color: var(--text-primary);
+  }
+  .container { max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: var(--text-muted); margin-bottom: 1.5rem; }
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-hint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .row:last-child { margin-bottom: 0; }
+  .row label { font-size: 14px; color: var(--text-muted); min-width: 170px; flex-shrink: 0; }
+  .row input[type="number"],
+  .row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 10px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background: var(--surface-2);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .row input:focus { border-color: var(--green); }
+  .row input.error { border-color: var(--red) !important; }
+  .row input[type="number"]::-webkit-outer-spin-button,
+  .row input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .row input[type="number"] { -moz-appearance: textfield; }
+  .row .unit { font-size: 13px; color: var(--text-hint); min-width: 24px; }
+  .row .prefix { font-size: 14px; color: var(--text-hint); }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .toggle-row input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--green); }
+
+  /* Validation alert */
+  .alert {
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 1rem;
+    font-size: 13px;
+    line-height: 1.5;
+    display: none;
+  }
+  .alert.error {
+    background: #2d1414;
+    border: 1px solid #5a2222;
+    color: #f08080;
+    display: block;
+  }
+  .alert.success {
+    background: var(--green-bg);
+    border: 1px solid #1a5c42;
+    color: var(--green-light);
+    display: block;
+  }
+  .alert strong { font-weight: 600; }
+
+  /* Hero */
+  .result-hero {
+    background: var(--green-bg);
+    border: 1px solid #1a5c42;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .result-hero .rlabel { font-size: 14px; color: var(--green-light); font-weight: 500; }
+  .result-hero .rsub { font-size: 12px; color: var(--green); margin-top: 2px; }
+  .result-hero .rval { font-size: 36px; font-weight: 600; color: var(--green-light); }
+  .copy-btn {
+    font-size: 12px;
+    padding: 6px 14px;
+    border: 1px solid var(--green);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--green-light);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .copy-btn:hover { background: rgba(29, 158, 117, 0.15); }
+
+  /* Metric grid — 2 columns always */
+  .results-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 1rem; }
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+  }
+  .metric .mlabel { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+  .metric .mval { font-size: 18px; font-weight: 600; color: var(--text-primary); }
+  .metric.valid .mval { color: var(--green-light); }
+  .metric.invalid .mval { color: var(--red); }
+
+  /* Breakdown */
+  .breakdown {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .brow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 14px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .brow:last-child { border-bottom: none; font-weight: 600; color: var(--green-light); font-size: 15px; }
+  .brow.deduct span:last-child { color: #f08080; }
+  .brow.add span:last-child { color: var(--green-light); }
+  .brow.op span:last-child { color: var(--text-hint); }
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  /* Buttons */
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 2rem; }
+  button {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  button:hover { background: var(--surface-2); }
+  button.primary {
+    background: var(--green);
+    color: #fff;
+    border-color: var(--green);
+    position: relative;
+    overflow: hidden;
+    width: fit-content;
+    transition: background 0.38s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.38s;
+  }
+  button.primary:hover,
+  button.primary.saved { background: var(--bg); border-color: var(--green); }
+  .btn-label {
+    display: block;
+    position: relative;
+    white-space: nowrap;
+    transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s;
+  }
+  button.primary:hover .btn-label,
+  button.primary.saved .btn-label {
+    transform: translateY(-48px);
+    opacity: 0;
+  }
+  .btn-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--green-light);
+    transform: translateY(48px);
+    opacity: 0;
+    transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s;
+    pointer-events: none;
+  }
+  button.primary:hover .btn-icon,
+  button.primary.saved .btn-icon { transform: translateY(0); opacity: 1; }
+  @keyframes save-pulse {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(0) scale(1.18); }
+  }
+  button.primary.saved .btn-icon { animation: save-pulse 0.4s ease 0.15s; }
+
+  /* Saved list */
+  .saved-list { margin-bottom: 1rem; }
+  .saved-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .saved-item:hover { border-color: var(--green); }
+  .saved-item .sname { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .saved-item .smeta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .saved-item .scogs { font-size: 16px; font-weight: 600; color: var(--green-light); margin-right: 10px; flex-shrink: 0; }
+  .saved-item .sdel {
+    font-size: 12px;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .saved-item .sdel:hover { color: var(--red); border-color: var(--red); }
+  .no-saved { font-size: 13px; color: var(--text-hint); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Pack split COGS calculator</h1>
+  <p class="sub">Calculate your cost when buying in one pack size and selling in another &mdash; plug result into SellerAmp</p>
+
+  <p class="section-label">Saved products</p>
+  <div class="saved-list" id="savedList"><p class="no-saved">No saved products yet.</p></div>
+
+  <div class="card">
+    <p class="section-label">Product details</p>
+    <div class="row">
+      <label>Product name</label>
+      <input type="text" id="prodName" placeholder="e.g. Stitch Sponge 3ct">
+    </div>
+    <div class="row">
+      <label>List price</label>
+      <span class="prefix">$</span>
+      <input type="number" id="listPrice" value="" step="0.01" min="0" oninput="calc()">
+    </div>
+    <div class="row">
+      <label>Units in source pack</label>
+      <input type="number" id="sourcePack" value="3" step="1" min="1" oninput="calc()">
+      <span class="unit">ct</span>
+    </div>
+    <div class="row">
+      <label>Units you're selling</label>
+      <input type="number" id="sellPack" value="2" step="1" min="1" oninput="calc()">
+      <span class="unit">ct</span>
+    </div>
+    <div class="row">
+      <label>Qty ordering</label>
+      <input type="number" id="qty" value="10" step="1" min="1" oninput="calc()">
+      <span class="unit">packs</span>
+    </div>
+    <div class="row">
+      <label>Existing inventory</label>
+      <input type="number" id="existingUnits" value="0" step="1" min="0" oninput="calc()">
+      <span class="unit">singles</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="section-label">Discount &amp; tax</p>
+    <div class="toggle-row">
+      <input type="checkbox" id="hasDiscount" onchange="toggleDiscount()">
+      <label for="hasDiscount">Apply supplier discount</label>
+    </div>
+    <div class="row" id="discountRow" style="display:none;">
+      <label>Discount</label>
+      <input type="number" id="discount" value="15" step="0.1" min="0" max="100" oninput="calc()">
+      <span class="unit">%</span>
+    </div>
+    <div class="toggle-row" style="margin-top:4px;">
+      <input type="checkbox" id="hasTax" onchange="toggleTax()" checked>
+      <label for="hasTax">Apply sales tax</label>
+    </div>
+    <div class="row" id="taxRow" style="display:flex;">
+      <label>Tax rate</label>
+      <input type="number" id="taxRate" value="8.25" step="0.001" min="0" max="20" oninput="calc()">
+      <span class="unit">%</span>
+    </div>
+  </div>
+
+  <div id="validationAlert" class="alert"></div>
+
+  <div class="result-hero">
+    <div>
+      <div class="rlabel">Your COGS &mdash; plug into SellerAmp</div>
+      <div class="rsub" id="heroSub">per listing unit</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="rval" id="heroVal">—</div>
+      <button class="copy-btn" onclick="copyCOGS()">copy</button>
+    </div>
+  </div>
+
+  <div class="results-grid">
+    <div class="metric">
+      <div class="mlabel">Cost per source pack</div>
+      <div class="mval" id="r-packCost">—</div>
+    </div>
+    <div class="metric">
+      <div class="mlabel">Cost per single unit</div>
+      <div class="mval" id="r-perUnit">—</div>
+    </div>
+    <div class="metric">
+      <div class="mlabel">Total singles (w/ inventory)</div>
+      <div class="mval" id="r-totalSingles">—</div>
+    </div>
+    <div class="metric" id="m-listingUnits">
+      <div class="mlabel">Total listing units</div>
+      <div class="mval" id="r-listingUnits">—</div>
+    </div>
+    <div class="metric">
+      <div class="mlabel">Total order cost</div>
+      <div class="mval" id="r-orderCost">—</div>
+    </div>
+    <div class="metric">
+      <div class="mlabel">Leftover single units</div>
+      <div class="mval" id="r-leftover">—</div>
+    </div>
+  </div>
+
+  <div class="breakdown">
+    <p class="section-label" style="margin-bottom:10px;">Step-by-step breakdown</p>
+    <div class="brow"><span>List price per source pack</span><span id="b-list">—</span></div>
+    <div class="brow deduct" id="b-discRow" style="display:none;"><span id="b-discLabel">— Discount</span><span id="b-disc">—</span></div>
+    <div class="brow add" id="b-taxRow" style="display:flex;"><span id="b-taxLabel">+ Tax</span><span id="b-tax">—</span></div>
+    <div class="brow"><span>= Cost per source pack</span><span id="b-packCost">—</span></div>
+    <div class="divider"></div>
+    <div class="brow op"><span id="b-divLabel">÷ source units</span><span id="b-div">—</span></div>
+    <div class="brow"><span>= Cost per single unit</span><span id="b-perUnit">—</span></div>
+    <div class="brow op"><span id="b-mulLabel">× sell units</span><span id="b-mul">—</span></div>
+    <div class="brow"><span>= COGS per listing unit</span><span id="b-cogs">—</span></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="primary" id="saveBtn" onclick="saveProduct()">
+      <span class="btn-label">Save product</span>
+      <span class="btn-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="19" height="19">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M4 2a2 2 0 00-2 2v16a2 2 0 002 2h16a2 2 0 002-2V6.828a2 2 0 00-.586-1.414l-2.828-2.828A2 2 0 0017.172 2H4zm4 1h6v4H8V3zM5 13h14v7H5v-7z"/>
+        </svg>
+      </span>
+    </button>
+    <button onclick="clearForm()">Clear</button>
+  </div>
+</div>
+
+<script>
+var STORAGE_KEY = 'packsplit_products';
+
+function getDiscount() {
+  return document.getElementById('hasDiscount').checked
+    ? (parseFloat(document.getElementById('discount').value) || 0)
+    : 0;
+}
+function getTax() {
+  return document.getElementById('hasTax').checked
+    ? (parseFloat(document.getElementById('taxRate').value) || 0)
+    : 0;
+}
+function toggleDiscount() {
+  var show = document.getElementById('hasDiscount').checked;
+  document.getElementById('discountRow').style.display = show ? 'flex' : 'none';
+  document.getElementById('b-discRow').style.display = show ? 'flex' : 'none';
+  calc();
+}
+function toggleTax() {
+  var show = document.getElementById('hasTax').checked;
+  document.getElementById('taxRow').style.display = show ? 'flex' : 'none';
+  document.getElementById('b-taxRow').style.display = show ? 'flex' : 'none';
+  calc();
+}
+
+function fmt(n) { return '$' + Math.abs(n).toFixed(2); }
+
+function isValidQty(q, sourcePack, sellPack, existingUnits) {
+  var totalSingles = q * sourcePack + existingUnits;
+  if (totalSingles % sellPack !== 0) return false;
+  return (totalSingles / sellPack) % 5 === 0;
+}
+
+function findNearestValid(currentQty, sourcePack, sellPack, existingUnits) {
+  var below = null, above = null;
+  for (var q = currentQty - 1; q >= 1; q--) {
+    if (isValidQty(q, sourcePack, sellPack, existingUnits)) { below = q; break; }
+  }
+  for (var q2 = currentQty + 1; q2 <= 500; q2++) {
+    if (isValidQty(q2, sourcePack, sellPack, existingUnits)) { above = q2; break; }
+  }
+  return { below: below, above: above };
+}
+
+function calc() {
+  var listPrice = parseFloat(document.getElementById('listPrice').value) || 0;
+  var sourcePack = parseInt(document.getElementById('sourcePack').value) || 1;
+  var sellPack = parseInt(document.getElementById('sellPack').value) || 1;
+  var qty = parseInt(document.getElementById('qty').value) || 1;
+  var existingUnits = parseInt(document.getElementById('existingUnits').value) || 0;
+  var discount = getDiscount();
+  var tax = getTax();
+
+  var afterDiscount = listPrice * (1 - discount / 100);
+  var packCost = afterDiscount * (1 + tax / 100);
+  var perUnit = packCost / sourcePack;
+  var cogs = perUnit * sellPack;
+  var totalSingles = qty * sourcePack + existingUnits;
+  var orderCost = packCost * qty;
+
+  var floorListing = Math.floor(totalSingles / sellPack);
+  var effectiveListing = Math.floor(floorListing / 5) * 5;
+  var effectiveLeftover = totalSingles - effectiveListing * sellPack;
+  var isValid = effectiveLeftover === 0 && effectiveListing > 0;
+
+  var qtyEl = document.getElementById('qty');
+  var alertEl = document.getElementById('validationAlert');
+  var listingMetric = document.getElementById('m-listingUnits');
+
+  if (isValid) {
+    qtyEl.classList.remove('error');
+    listingMetric.className = 'metric valid';
+    alertEl.className = 'alert success';
+    alertEl.innerHTML = '<strong>Valid order.</strong> ' + effectiveListing + ' listing units &mdash; divisible by 5.';
+  } else {
+    qtyEl.classList.add('error');
+    listingMetric.className = 'metric invalid';
+    var msg;
+    msg = '<strong>Invalid qty.</strong> ' + effectiveListing + ' listing units with ' + effectiveLeftover + ' singles left over.';
+    var nearest = findNearestValid(qty, sourcePack, sellPack, existingUnits);
+    var parts = [];
+    if (nearest.below !== null) parts.push('try <strong>' + nearest.below + '</strong> packs below');
+    if (nearest.above !== null) parts.push('<strong>' + nearest.above + '</strong> packs above');
+    if (parts.length) msg += ' Nearest valid: ' + parts.join(' or ') + '.';
+    alertEl.className = 'alert error';
+    alertEl.innerHTML = msg;
+  }
+
+  document.getElementById('heroVal').textContent = fmt(cogs);
+  document.getElementById('heroSub').textContent = sellPack + 'ct listing unit (cost per single × ' + sellPack + ')';
+  document.getElementById('r-packCost').textContent = fmt(packCost);
+  document.getElementById('r-perUnit').textContent = fmt(perUnit);
+  document.getElementById('r-totalSingles').textContent = totalSingles;
+  document.getElementById('r-listingUnits').textContent = effectiveListing;
+  document.getElementById('r-orderCost').textContent = fmt(orderCost);
+  document.getElementById('r-leftover').textContent = effectiveLeftover + ' units';
+
+  document.getElementById('b-list').textContent = fmt(listPrice);
+  document.getElementById('b-discLabel').textContent = '— ' + discount.toFixed(1) + '% discount';
+  document.getElementById('b-disc').textContent = '-' + fmt(listPrice * discount / 100);
+  document.getElementById('b-taxLabel').textContent = '+ ' + tax.toFixed(3).replace(/\.?0+$/, '') + '% tax';
+  document.getElementById('b-tax').textContent = '+' + fmt(afterDiscount * tax / 100);
+  document.getElementById('b-packCost').textContent = fmt(packCost);
+  document.getElementById('b-divLabel').textContent = '÷ ' + sourcePack + ' units';
+  document.getElementById('b-div').textContent = '÷ ' + sourcePack;
+  document.getElementById('b-perUnit').textContent = fmt(perUnit);
+  document.getElementById('b-mulLabel').textContent = '× ' + sellPack + ' units';
+  document.getElementById('b-mul').textContent = '× ' + sellPack;
+  document.getElementById('b-cogs').textContent = fmt(cogs);
+}
+
+function copyCOGS() {
+  var val = document.getElementById('heroVal').textContent.replace('$', '');
+  if (val === '—') return;
+  navigator.clipboard.writeText(val).catch(function() {});
+  var btn = document.querySelector('.copy-btn');
+  btn.textContent = 'copied!';
+  setTimeout(function() { btn.textContent = 'copy'; }, 1500);
+}
+
+function getProducts() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e) { return {}; }
+}
+function saveProductsToStorage(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function saveProduct() {
+  var name = document.getElementById('prodName').value.trim();
+  if (!name) { alert('Please enter a product name first.'); return; }
+  var listPrice = parseFloat(document.getElementById('listPrice').value) || 0;
+  var sourcePack = parseInt(document.getElementById('sourcePack').value) || 1;
+  var sellPack = parseInt(document.getElementById('sellPack').value) || 1;
+  var afterDiscount = listPrice * (1 - getDiscount() / 100);
+  var packCost = afterDiscount * (1 + getTax() / 100);
+  var cogs = (packCost / sourcePack) * sellPack;
+  var key = 'product:' + name.toLowerCase().replace(/\s+/g, '_');
+  var products = getProducts();
+  products[key] = {
+    name: name,
+    listPrice: document.getElementById('listPrice').value,
+    sourcePack: document.getElementById('sourcePack').value,
+    sellPack: document.getElementById('sellPack').value,
+    qty: document.getElementById('qty').value,
+    existingUnits: document.getElementById('existingUnits').value,
+    hasDiscount: document.getElementById('hasDiscount').checked,
+    discount: document.getElementById('discount').value,
+    hasTax: document.getElementById('hasTax').checked,
+    taxRate: document.getElementById('taxRate').value,
+    cogs: cogs.toFixed(2),
+    savedAt: new Date().toLocaleDateString()
+  };
+  saveProductsToStorage(products);
+  var btn = document.getElementById('saveBtn');
+  if (!btn.classList.contains('saved')) {
+    btn.classList.add('saved');
+    setTimeout(function() { btn.classList.remove('saved'); }, 2000);
+  }
+  renderSaved();
+}
+
+function loadProduct(key) {
+  var products = getProducts();
+  var d = products[key];
+  if (!d) return;
+  document.getElementById('prodName').value = d.name;
+  document.getElementById('listPrice').value = d.listPrice;
+  document.getElementById('sourcePack').value = d.sourcePack;
+  document.getElementById('sellPack').value = d.sellPack || d.amazonPack || '2';
+  document.getElementById('qty').value = d.qty;
+  document.getElementById('existingUnits').value = d.existingUnits || '0';
+  document.getElementById('hasDiscount').checked = d.hasDiscount;
+  document.getElementById('discount').value = d.discount;
+  document.getElementById('hasTax').checked = d.hasTax;
+  document.getElementById('taxRate').value = d.taxRate;
+  toggleDiscount();
+  toggleTax();
+  calc();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function deleteProduct(key) {
+  var products = getProducts();
+  delete products[key];
+  saveProductsToStorage(products);
+  renderSaved();
+}
+
+function renderSaved() {
+  var container = document.getElementById('savedList');
+  var products = getProducts();
+  var keys = Object.keys(products);
+  if (keys.length === 0) {
+    container.innerHTML = '<p class="no-saved">No saved products yet.</p>';
+    return;
+  }
+  container.innerHTML = keys.map(function(key) {
+    var d = products[key];
+    var sell = d.sellPack || d.amazonPack || '?';
+    var discText = d.hasDiscount ? d.discount + '% off' : 'no discount';
+    var taxText = d.hasTax ? d.taxRate + '% tax' : 'no tax';
+    return '<div class="saved-item" onclick="loadProduct(\'' + key + '\')">'
+      + '<div>'
+      + '<div class="sname">' + d.name + '</div>'
+      + '<div class="smeta">$' + parseFloat(d.listPrice).toFixed(2) + ' &middot; ' + d.sourcePack + 'ct &rarr; ' + sell + 'ct &middot; ' + discText + ' &middot; ' + taxText + ' &middot; saved ' + d.savedAt + '</div>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:8px;">'
+      + '<span class="scogs">$' + d.cogs + '</span>'
+      + '<button class="sdel" onclick="event.stopPropagation();deleteProduct(\'' + key + '\')">remove</button>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function clearForm() {
+  document.getElementById('prodName').value = '';
+  document.getElementById('listPrice').value = '';
+  document.getElementById('sourcePack').value = '3';
+  document.getElementById('sellPack').value = '2';
+  document.getElementById('qty').value = '10';
+  document.getElementById('existingUnits').value = '0';
+  document.getElementById('hasDiscount').checked = false;
+  document.getElementById('discount').value = '15';
+  document.getElementById('hasTax').checked = true;
+  document.getElementById('taxRate').value = '8.25';
+  toggleDiscount();
+  toggleTax();
+  calc();
+}
+
+renderSaved();
+calc();
+</script>
+</body>
+</html>

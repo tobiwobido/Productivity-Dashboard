@@ -1,0 +1,58 @@
+{
+  "product:stitch_sponge_3ct": {
+    "name": "Stitch Sponge 3ct",
+    "listPrice": "7.49",
+    "sourcePack": "3",
+    "sellPack": "2",
+    "qty": "10",
+    "existingUnits": "0",
+    "hasDiscount": true,
+    "discount": "12",
+    "hasTax": true,
+    "taxRate": "8.25",
+    "cogs": "4.76",
+    "savedAt": "Demo"
+  },
+  "product:mint_laundry_sheets_60ct": {
+    "name": "Mint Laundry Sheets 60ct",
+    "listPrice": "14.99",
+    "sourcePack": "1",
+    "sellPack": "1",
+    "qty": "25",
+    "existingUnits": "0",
+    "hasDiscount": false,
+    "discount": "15",
+    "hasTax": true,
+    "taxRate": "8.25",
+    "cogs": "16.23",
+    "savedAt": "Demo"
+  },
+  "product:travel_toothpaste_4pk": {
+    "name": "Travel Toothpaste 4pk",
+    "listPrice": "9.88",
+    "sourcePack": "4",
+    "sellPack": "2",
+    "qty": "15",
+    "existingUnits": "0",
+    "hasDiscount": true,
+    "discount": "8",
+    "hasTax": true,
+    "taxRate": "8.25",
+    "cogs": "4.92",
+    "savedAt": "Demo"
+  },
+  "product:bamboo_wipes_6pk": {
+    "name": "Bamboo Wipes 6pk",
+    "listPrice": "18.49",
+    "sourcePack": "6",
+    "sellPack": "3",
+    "qty": "10",
+    "existingUnits": "0",
+    "hasDiscount": true,
+    "discount": "10",
+    "hasTax": true,
+    "taxRate": "8.25",
+    "cogs": "9.01",
+    "savedAt": "Demo"
+  }
+}
