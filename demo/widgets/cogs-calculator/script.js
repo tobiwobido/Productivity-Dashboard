@@ -2,8 +2,15 @@ var COGS_KEY = 'packsplit_demo_products';
 var ICON_CLOSE = '<svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 2L8 8M8 2L2 8"/></svg>';
 var actionFeedbackTimers = {};
 var cogsUndoStack = [];
-var cogsRedoStack = [];
 var cogsUndoing = false;
+var cogsMotionReady = false;
+var heroValMinW = 0;
+var _cogsAnimDebounce = null;
+var _cogsAnimPending = null;
+var _cogsAlertDebounce = null;
+var _cogsLastIsValid = null;
+var _cogsAlertTextTimer = null;
+var cogsExitingRows = {};
 var cogsFormIds = [
   'prodName', 'listPrice', 'sourcePack', 'sellPack', 'qty',
   'existingUnits', 'hasDiscount', 'discount', 'hasTax', 'taxRate'
@@ -44,7 +51,6 @@ function pushCogsUndo(snapshot) {
   if (cogsUndoStack[cogsUndoStack.length - 1] === snap) return;
   cogsUndoStack.push(snap);
   if (cogsUndoStack.length > 50) cogsUndoStack.shift();
-  cogsRedoStack = [];
 }
 
 function doCogsUndo() {
@@ -53,10 +59,7 @@ function doCogsUndo() {
     ? active._undoSnapshot
     : null;
   if (!pending && !cogsUndoStack.length) return false;
-  var current = getCogsSnapshot();
   cogsUndoing = true;
-  cogsRedoStack.push(current);
-  if (cogsRedoStack.length > 50) cogsRedoStack.shift();
   var snap = JSON.parse(pending || cogsUndoStack.pop());
   sessionStorage.setItem(COGS_KEY, snap.products || '{}');
   setCogsFormState(snap.form || {});
@@ -67,24 +70,6 @@ function doCogsUndo() {
 }
 
 window.doCogsUndo = doCogsUndo;
-
-function doCogsRedo() {
-  if (!cogsRedoStack.length) return false;
-  var active = document.activeElement;
-  var current = getCogsSnapshot();
-  cogsUndoing = true;
-  cogsUndoStack.push(current);
-  if (cogsUndoStack.length > 50) cogsUndoStack.shift();
-  var snap = JSON.parse(cogsRedoStack.pop());
-  sessionStorage.setItem(COGS_KEY, snap.products || '{}');
-  setCogsFormState(snap.form || {});
-  renderSaved();
-  if (active) active._undoSnapshot = null;
-  cogsUndoing = false;
-  return true;
-}
-
-window.doCogsRedo = doCogsRedo;
 
 function triggerActionFeedback(btnId) {
   var btn = document.getElementById(btnId);
@@ -131,20 +116,134 @@ function getTax() {
   return document.getElementById('hasTax').checked
     ? (parseFloat(document.getElementById('taxRate').value) || 0) : 0;
 }
+
+function prefersReducedCogsMotion() {
+  return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function setOptionalCogsRow(rowId, show, displayType) {
+  var row = document.getElementById(rowId);
+  if (!row) return;
+  row.classList.add('cogs-optional-row');
+  clearTimeout(row._cogsHideTimer);
+
+  if (show) {
+    delete cogsExitingRows[rowId];
+    row.style.display = displayType || 'flex';
+    if (!cogsMotionReady || prefersReducedCogsMotion()) {
+      row.classList.add('is-visible');
+      return;
+    }
+    row.classList.remove('is-visible');
+    void row.offsetWidth;
+    row.classList.add('is-visible');
+    return;
+  }
+
+  row.classList.remove('is-visible');
+  if (!cogsMotionReady || prefersReducedCogsMotion()) {
+    row.style.display = 'none';
+    return;
+  }
+  cogsExitingRows[rowId] = true;
+  row._cogsHideTimer = setTimeout(function() {
+    if (!row.classList.contains('is-visible')) {
+      row.style.display = 'none';
+      delete cogsExitingRows[rowId];
+    }
+  }, 320);
+}
+
+function syncCogsCheckToggle(inputId, animate) {
+  var input = document.getElementById(inputId);
+  if (!input) return;
+  var toggle = input.closest ? input.closest('.cogs-slider-group') : null;
+  if (!toggle) return;
+  toggle.classList.toggle('is-checked', !!input.checked);
+}
+
+function updateAlertWithAnimation(alertEl, className, innerHTML) {
+  if (alertEl.innerHTML === innerHTML) return;
+  alertEl.style.opacity = '0';
+  setTimeout(function() {
+    alertEl.className = className;
+    alertEl.innerHTML = innerHTML;
+    alertEl.style.opacity = '';
+  }, 150);
+}
+
 function toggleDiscount() {
   var show = document.getElementById('hasDiscount').checked;
-  document.getElementById('discountRow').style.display = show ? 'flex' : 'none';
-  document.getElementById('b-discRow').style.display = show ? 'flex' : 'none';
+  syncCogsCheckToggle('hasDiscount', true);
+  setOptionalCogsRow('discountRow', show, 'flex');
+  setOptionalCogsRow('b-discRow', show, 'flex');
   calc();
 }
 function toggleTax() {
   var show = document.getElementById('hasTax').checked;
-  document.getElementById('taxRow').style.display = show ? 'flex' : 'none';
-  document.getElementById('b-taxRow').style.display = show ? 'flex' : 'none';
+  syncCogsCheckToggle('hasTax', true);
+  setOptionalCogsRow('taxRow', show, 'flex');
+  setOptionalCogsRow('b-taxRow', show, 'flex');
   calc();
 }
 
 function fmt(n) { return '$' + Math.abs(n).toFixed(2); }
+
+function setRollingText(id, value) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var next = String(value);
+  var current = el.dataset.rollValue;
+  if (current === next) return;
+  el.dataset.rollValue = next;
+
+  if (!cogsMotionReady || prefersReducedCogsMotion() || !current) {
+    el.textContent = next;
+    if (id === 'heroVal' && heroValMinW) {
+      var w0 = el.offsetWidth;
+      if (w0 > heroValMinW) { heroValMinW = w0; el.style.minWidth = heroValMinW + 'px'; }
+    }
+    return;
+  }
+
+  // Reserve current width before mutation so layout doesn't shift mid-animation
+  var reservedW = el.offsetWidth;
+  el.style.minWidth = reservedW + 'px';
+
+  el.innerHTML = '<span class="roll-number" aria-hidden="true">'
+    + '<span class="roll-old"></span>'
+    + '<span class="roll-new"></span>'
+    + '</span>';
+  el.querySelector('.roll-old').textContent = current;
+  el.querySelector('.roll-new').textContent = next;
+  el.setAttribute('aria-label', next);
+
+  // If the roll container is wider than reserved (new value is larger), expand lock
+  var rollW = el.offsetWidth;
+  if (rollW > reservedW) el.style.minWidth = rollW + 'px';
+
+  clearTimeout(el._rollTimer);
+  el._rollTimer = setTimeout(function() {
+    el.textContent = next;
+    if (id === 'heroVal') {
+      var w = el.offsetWidth;
+      if (w > heroValMinW) heroValMinW = w;
+      el.style.minWidth = heroValMinW + 'px';
+    } else {
+      el.style.minWidth = '';
+    }
+  }, 500);
+}
+
+function setTextDirect(id, value) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var next = String(value);
+  if (el.dataset.rollValue === next) return;
+  el.dataset.rollValue = next;
+  clearTimeout(el._rollTimer);
+  el.textContent = next;
+}
 
 function isValidQty(q, sourcePack, sellPack, existingUnits) {
   var totalSingles = q * sourcePack + existingUnits;
@@ -186,44 +285,64 @@ function calc() {
   var alertEl       = document.getElementById('validationAlert');
   var listingMetric = document.getElementById('m-listingUnits');
 
+  qtyEl.classList.toggle('error', !isValid);
+
+  var alertClass = isValid ? 'alert success' : 'alert error';
+  var alertHTML;
   if (isValid) {
-    qtyEl.classList.remove('error');
-    listingMetric.className = 'metric valid';
-    alertEl.className = 'alert success';
-    alertEl.innerHTML = '<strong>Valid order.</strong> ' + effectiveListing + ' listing units &mdash; divisible by 5.';
+    alertHTML = '<strong>Valid order.</strong> ' + effectiveListing + ' listing units &mdash; divisible by 5.';
   } else {
-    qtyEl.classList.add('error');
-    listingMetric.className = 'metric invalid';
     var msg = '<strong>Invalid qty.</strong> ' + effectiveListing + ' listing units with ' + effectiveLeftover + ' singles left over.';
     var nearest = findNearestValid(qty, sourcePack, sellPack, existingUnits);
     var parts = [];
     if (nearest.below !== null) parts.push('try <strong>' + nearest.below + '</strong> packs below');
     if (nearest.above !== null) parts.push('<strong>' + nearest.above + '</strong> packs above');
     if (parts.length) msg += ' Nearest valid: ' + parts.join(' or ') + '.';
-    alertEl.className = 'alert error';
-    alertEl.innerHTML = msg;
+    alertHTML = msg;
   }
+  listingMetric.className = isValid ? 'metric valid' : 'metric invalid';
+  var textEl = document.getElementById('alertText');
+  alertEl.className = alertClass;
+  textEl.innerHTML = alertHTML;
+  textEl.classList.add('is-visible');
 
-  document.getElementById('heroVal').textContent = fmt(cogs);
-  document.getElementById('heroSub').textContent = sellPack + 'ct listing unit (cost per single × ' + sellPack + ')';
-  document.getElementById('r-packCost').textContent    = fmt(packCost);
-  document.getElementById('r-perUnit').textContent     = fmt(perUnit);
-  document.getElementById('r-totalSingles').textContent = totalSingles;
-  document.getElementById('r-listingUnits').textContent = effectiveListing;
-  document.getElementById('r-orderCost').textContent   = fmt(orderCost);
-  document.getElementById('r-leftover').textContent    = effectiveLeftover + ' units';
-  document.getElementById('b-list').textContent        = fmt(listPrice);
-  document.getElementById('b-discLabel').textContent   = '— ' + discount.toFixed(1) + '% discount';
-  document.getElementById('b-disc').textContent        = '-' + fmt(listPrice * discount / 100);
-  document.getElementById('b-taxLabel').textContent    = '+ ' + tax.toFixed(3).replace(/\.?0+$/, '') + '% tax';
-  document.getElementById('b-tax').textContent         = '+' + fmt(afterDiscount * tax / 100);
-  document.getElementById('b-packCost').textContent    = fmt(packCost);
-  document.getElementById('b-divLabel').textContent    = '÷ ' + sourcePack + ' units';
-  document.getElementById('b-div').textContent         = '÷ ' + sourcePack;
-  document.getElementById('b-perUnit').textContent     = fmt(perUnit);
-  document.getElementById('b-mulLabel').textContent    = '× ' + sellPack + ' units';
-  document.getElementById('b-mul').textContent         = '× ' + sellPack;
-  document.getElementById('b-cogs').textContent        = fmt(cogs);
+  var cardDefs = [
+    { id: 'heroVal',        val: fmt(cogs) },
+    { id: 'r-packCost',     val: fmt(packCost) },
+    { id: 'r-perUnit',      val: fmt(perUnit) },
+    { id: 'r-totalSingles', val: String(totalSingles) },
+    { id: 'r-listingUnits', val: String(effectiveListing) },
+    { id: 'r-orderCost',    val: fmt(orderCost) },
+    { id: 'r-leftover',     val: effectiveLeftover + ' units' },
+    { id: 'b-list',     val: fmt(listPrice) },
+    { id: 'b-packCost', val: fmt(packCost) },
+    { id: 'b-perUnit',  val: fmt(perUnit) },
+    { id: 'b-cogs',     val: fmt(cogs) }
+  ];
+  if (!cogsExitingRows['b-discRow']) {
+    cardDefs.push({ id: 'b-disc', val: '-' + fmt(listPrice * discount / 100) });
+  }
+  if (!cogsExitingRows['b-taxRow']) {
+    cardDefs.push({ id: 'b-tax', val: '+' + fmt(afterDiscount * tax / 100) });
+  }
+  clearTimeout(_cogsAnimDebounce);
+  _cogsAnimPending = cardDefs;
+  _cogsAnimDebounce = setTimeout(function() {
+    var pending = _cogsAnimPending;
+    _cogsAnimPending = null;
+    pending.forEach(function(c) { setRollingText(c.id, c.val); });
+  }, 400);
+  var setBreak = setTextDirect;
+  if (!cogsExitingRows['b-discRow']) {
+    setBreak('b-discLabel', '— ' + discount.toFixed(1) + '% discount');
+  }
+  if (!cogsExitingRows['b-taxRow']) {
+    setBreak('b-taxLabel', '+ ' + tax.toFixed(3).replace(/\.?0+$/, '') + '% tax');
+  }
+  setBreak('b-divLabel', '÷ ' + sourcePack + ' units');
+  setBreak('b-div', '÷ ' + sourcePack);
+  setBreak('b-mulLabel', '× ' + sellPack + ' units');
+  setBreak('b-mul', '× ' + sellPack);
 }
 
 function getProducts() {
@@ -290,6 +409,9 @@ function fallbackDemoProducts() {
   };
 }
 async function loadDemoProducts() {
+  if (window.location && window.location.protocol === 'file:') {
+    return fallbackDemoProducts();
+  }
   try {
     var response = await fetch('data/products.json', { cache: 'no-store' });
     if (!response.ok) throw new Error('Demo product data unavailable');
@@ -436,34 +558,13 @@ function clearForm() {
 }
 
 function copyCOGS() {
-  var val = document.getElementById('heroVal').textContent.replace('$', '');
-  if (val === '—' || val === 'â€”') return;
+  var hero = document.getElementById("heroVal");
+  var val = (hero.dataset.rollValue || hero.textContent).replace("$", "");
+  if (!val || val === "�") return;
   navigator.clipboard.writeText(val).catch(function() {});
-  var btn = document.getElementById('copyBtn');
-  var label = btn && btn.querySelector('.copy-btn-label');
-  if (!btn || !label) return;
-  if (copyBtnTimer) clearTimeout(copyBtnTimer);
-  if (copyBtnAnimTimer) clearTimeout(copyBtnAnimTimer);
-  btn.classList.remove('copied', 'copy-animating');
-  label.textContent = 'Copied!';
-  void btn.offsetWidth;
-  btn.classList.add('copy-animating');
-  copyBtnAnimTimer = setTimeout(function() {
-    btn.classList.remove('copy-animating');
-    btn.classList.add('copied');
-  }, 420);
-  copyBtnTimer = setTimeout(function() {
-    btn.classList.remove('copied');
-    label.textContent = 'Copy';
-  }, 1800);
+  triggerActionFeedback("copyBtn");
 }
 
-function copyCOGS() {
-  var val = document.getElementById('heroVal').textContent.replace('$', '');
-  if (val === 'â€”' || val === 'Ã¢â‚¬â€' || val === '—') return;
-  navigator.clipboard.writeText(val).catch(function() {});
-  triggerActionFeedback('copyBtn');
-}
 
 function bindCogsUndoControls() {
   cogsFormIds.forEach(function(id) {
@@ -485,6 +586,15 @@ function bindCogsUndoControls() {
   });
 }
 
+function copyCOGS() {
+  var hero = document.getElementById('heroVal');
+  if (!hero) return;
+  var val = (hero.dataset.rollValue || hero.textContent).replace('$', '');
+  if (!val || val === '�') return;
+  navigator.clipboard.writeText(val).catch(function() {});
+  triggerActionFeedback('copyBtn');
+}
+
 bindActionFeedbackReset('saveBtn');
 bindActionFeedbackReset('copyBtn');
 bindActionFeedbackReset('clearBtn');
@@ -492,12 +602,24 @@ bindCogsUndoControls();
 
 async function initDemoProducts() {
   cogsUndoStack = [];
-  cogsRedoStack = [];
   await seedDemoProductsIfNeeded();
   renderSaved();
-  calc();
+  syncCogsCheckToggle('hasDiscount', false);
+  syncCogsCheckToggle('hasTax', false);
+  toggleDiscount();
+  toggleTax();
+  requestAnimationFrame(function() {
+    cogsMotionReady = true;
+    var heroEl = document.getElementById('heroVal');
+    if (heroEl) {
+      var cur = heroEl.textContent;
+      heroEl.textContent = '$99.99';
+      heroValMinW = heroEl.offsetWidth;
+      heroEl.textContent = cur;
+      heroEl.style.minWidth = heroValMinW + 'px';
+    }
+  });
 }
 
 window.resetDemoProducts = initDemoProducts;
 initDemoProducts();
-

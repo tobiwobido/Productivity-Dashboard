@@ -42,7 +42,6 @@ function getData() {
 // ── Undo stack ────────────────────────────────────────────────────────────────
 
 var undoStack = [];
-var redoStack = [];
 var _undoing  = false;
 
 function pushUndo() {
@@ -51,28 +50,12 @@ function pushUndo() {
   if (undoStack[undoStack.length - 1] === snap) return;
   undoStack.push(snap);
   if (undoStack.length > 50) undoStack.shift();
-  redoStack = [];
 }
 
 function doUndo() {
   if (!undoStack.length) return false;
-  var current = sessionStorage.getItem(TM_KEY) || JSON.stringify({ life:[], work:[], pd:[] });
   _undoing = true;
-  redoStack.push(current);
-  if (redoStack.length > 50) redoStack.shift();
   sessionStorage.setItem(TM_KEY, undoStack.pop());
-  _undoing = false;
-  render();
-  return true;
-}
-
-function doRedo() {
-  if (!redoStack.length) return false;
-  var current = sessionStorage.getItem(TM_KEY) || JSON.stringify({ life:[], work:[], pd:[] });
-  _undoing = true;
-  undoStack.push(current);
-  if (undoStack.length > 50) undoStack.shift();
-  sessionStorage.setItem(TM_KEY, redoStack.pop());
   _undoing = false;
   render();
   return true;
@@ -281,6 +264,13 @@ function fallbackDemoTaskData() {
 }
 
 async function loadDemoTaskData() {
+  if (window.location && window.location.protocol === 'file:') {
+    var localFallback = fallbackDemoTaskData();
+    ['life','work','pd'].forEach(function(tab) {
+      localFallback[tab] = (localFallback[tab] || []).map(normalizeDemoTask);
+    });
+    return localFallback;
+  }
   try {
     var response = await fetch('data/tasks.json', { cache: 'no-store' });
     if (!response.ok) throw new Error('Demo task data unavailable');
@@ -412,17 +402,9 @@ function deleteTask(tab, id, btn) {
 }
 
 function clearDone(tab) {
-  var isReverted = document.body.classList.contains('preview-update-reverted');
-  if (!isReverted && _clearDoneTimers[tab]) return;
+  if (_clearDoneTimers[tab]) return;
   var data = getData();
   if (!(data[tab]||[]).some(function(t){ return t.done; })) return;
-  if (isReverted) {
-    (data[tab]||[]).filter(function(t){ return t.done; })
-      .forEach(function(t){ delete openNotes[t.id]; });
-    data[tab] = (data[tab]||[]).filter(function(t){ return !t.done; });
-    saveData(data); render();
-    return;
-  }
   var container = document.getElementById('tasks-' + tab);
   var exitingEls = [];
   if (container) {
@@ -455,23 +437,12 @@ function clearDone(tab) {
 }
 
 function clearAllDone() {
-  var isReverted = document.body.classList.contains('preview-update-reverted');
-  if (!isReverted && _clearAllDoneTimer) return;
+  if (_clearAllDoneTimer) return;
   var data = getData();
   var hasDone = ['life','work','pd'].some(function(tab) {
     return (data[tab]||[]).some(function(t){ return t.done; });
   });
   if (!hasDone) { showClearDoneFeedback(); return; }
-  if (isReverted) {
-    ['life','work','pd'].forEach(function(tab) {
-      (data[tab]||[]).filter(function(t){ return t.done; })
-        .forEach(function(t){ delete openNotes[t.id]; });
-      data[tab] = (data[tab]||[]).filter(function(t){ return !t.done; });
-    });
-    saveData(data); render();
-    showClearDoneFeedback();
-    return;
-  }
   var exitingEls = [];
   ['life','work','pd'].forEach(function(tab) {
     var container = document.getElementById('tasks-' + tab);
@@ -513,11 +484,24 @@ function showClearDoneFeedback() {
   var btn = document.getElementById('filter-clear-done');
   if (!btn) return;
   clearTimeout(btn._clearDoneTimer);
+  btn.classList.remove('is-undoing');
   btn.classList.add('is-cleared');
   btn._clearDoneTimer = setTimeout(function() {
     btn.classList.remove('is-cleared');
+    btn.classList.add('is-undoing');
     btn._clearDoneTimer = null;
   }, 1350);
+}
+
+function handleClearDoneClick() {
+  var btn = document.getElementById('filter-clear-done');
+  if (!btn) return;
+  if (btn.classList.contains('is-undoing')) {
+    doUndo();
+    btn.classList.remove('is-undoing');
+  } else {
+    clearAllDone();
+  }
 }
 
 function saveTitle(tab, id, val) {
@@ -966,15 +950,20 @@ function captureColumnHeights() {
   });
 }
 
-function animateColumnHeights(prevHeights) {
+function animateColumnHeights(prevHeights, resizeMs) {
   if (!prevHeights || !prevHeights.length) return;
   if (_columnResizeTimer) {
     clearTimeout(_columnResizeTimer);
     _columnResizeTimer = null;
   }
-  prevHeights.forEach(function(item) {
+  var duration = Math.max(360, resizeMs || 0);
+  var measurements = prevHeights.map(function(item) {
+    if (!item.el) return item.height;
+    return item.el.offsetHeight;
+  });
+  prevHeights.forEach(function(item, idx) {
     if (!item.el) return;
-    var nextHeight = item.el.offsetHeight;
+    var nextHeight = measurements[idx];
     if (Math.abs(nextHeight - item.height) < 1) {
       item.el.style.height = '';
       item.el.classList.remove('is-resizing');
@@ -983,8 +972,13 @@ function animateColumnHeights(prevHeights) {
     item.el.classList.add('is-resizing');
     item.el.style.transition = 'none';
     item.el.style.height = item.height + 'px';
+  });
+  prevHeights.forEach(function(item, idx) {
+    if (!item.el) return;
+    var nextHeight = measurements[idx];
+    if (Math.abs(nextHeight - item.height) < 1) return;
     item.el.offsetHeight;
-    item.el.style.transition = 'height 360ms cubic-bezier(0.22, 1, 0.36, 1)';
+    item.el.style.transition = 'height ' + duration + 'ms cubic-bezier(0.22, 1, 0.36, 1)';
     item.el.style.height = nextHeight + 'px';
   });
   _columnResizeTimer = setTimeout(function() {
@@ -995,7 +989,19 @@ function animateColumnHeights(prevHeights) {
       item.el.classList.remove('is-resizing');
     });
     _columnResizeTimer = null;
-  }, 420);
+  }, duration);
+}
+
+function getTransitionResizeDuration() {
+  var maxFlipMs = 0;
+  ['life','work','pd'].forEach(function(tab) {
+    var container = document.getElementById('tasks-' + tab);
+    var flipMs = container && typeof container._lastFlipMs === 'number'
+      ? container._lastFlipMs
+      : 0;
+    maxFlipMs = Math.max(maxFlipMs, flipMs);
+  });
+  return Math.max(360, maxFlipMs);
 }
 
 function setFilter(f) {
@@ -1003,11 +1009,6 @@ function setFilter(f) {
   document.querySelectorAll('.filter-tab').forEach(function(btn) {
     btn.classList.toggle('active', btn.dataset.filter === f);
   });
-  var clearDoneBtn = document.getElementById('filter-clear-done');
-  if (clearDoneBtn) {
-    clearDoneBtn.classList.toggle('is-visible', f === 'done');
-    clearDoneBtn.setAttribute('aria-hidden', f === 'done' ? 'false' : 'true');
-  }
   if (_filterTransitionTimer) {
     clearTimeout(_filterTransitionTimer);
     _filterTransitionTimer = null;
@@ -1024,6 +1025,11 @@ function setFilter(f) {
   }
   var data = getData();
   var exiting = [];
+  var prevFilter = activeFilter;
+  var forceEnterDone = (
+    (prevFilter === 'all' && f === 'done') ||
+    (prevFilter === 'done' && f === 'all')
+  );
   pendingFilterEnterIds = { life: {}, work: {}, pd: {} };
   ['life','work','pd'].forEach(function(tab) {
     var container = document.getElementById('tasks-' + tab);
@@ -1035,15 +1041,24 @@ function setFilter(f) {
     var nextIds = {};
     getDisplayTasksForFilter(data[tab] || [], f).forEach(function(task) {
       nextIds[task.id] = true;
-      if (!currentIds[task.id]) pendingFilterEnterIds[tab][task.id] = true;
+      if (!currentIds[task.id]) {
+        pendingFilterEnterIds[tab][task.id] = true;
+      } else if (forceEnterDone && prevFilter === 'done' && f === 'all' && task.done) {
+        pendingFilterEnterIds[tab][task.id] = true;
+      }
     });
     container.querySelectorAll('.task-group[data-id]').forEach(function(el) {
       if (!nextIds[el.dataset.id]) exiting.push(el);
     });
   });
+  if (forceEnterDone && prevFilter === 'all' && exiting.length === 0) {
+    pendingFilterEnterIds = { life: {}, work: {}, pd: {} };
+  }
   if (!exiting.length) {
+    var prevHeightsNoExit = captureColumnHeights();
     activeFilter = f;
     render();
+    animateColumnHeights(prevHeightsNoExit, getTransitionResizeDuration());
     return;
   }
   exiting.forEach(function(el) {
@@ -1054,7 +1069,7 @@ function setFilter(f) {
     _filterTransitionTimer = null;
     activeFilter = f;
     render();
-    animateColumnHeights(prevHeights);
+    animateColumnHeights(prevHeights, getTransitionResizeDuration());
   }, 260);
 }
 
@@ -1074,14 +1089,46 @@ function render() {
       _filterEnterTimer = null;
     }, 380);
   }
-  var clearDoneBtn = document.getElementById('filter-clear-done');
-  if (clearDoneBtn) {
-    clearDoneBtn.classList.toggle('is-visible', activeFilter === 'done');
-    clearDoneBtn.setAttribute('aria-hidden', activeFilter === 'done' ? 'false' : 'true');
+  var undoBtn = document.getElementById('filter-undo-btn');
+  if (undoBtn) undoBtn.classList.toggle('is-visible', undoStack.length > 0);
+  var clearBtn = document.getElementById('filter-clear-done');
+  if (clearBtn) {
+    var hasDone = activeFilter === 'done' && data && ['life','work','pd'].some(function(tab) {
+      return (data[tab]||[]).some(function(t){ return t.done; });
+    });
+    var keepClearStateVisible = clearBtn.classList.contains('is-cleared') || clearBtn.classList.contains('is-undoing');
+    clearBtn.classList.toggle('is-visible', hasDone || keepClearStateVisible);
+    if (!clearBtn.classList.contains('is-cleared')) {
+      if (!hasDone) {
+        clearBtn.classList.remove('is-undoing', 'is-cleared');
+      } else {
+        clearBtn.classList.remove('is-undoing');
+      }
+    }
   }
   document.querySelectorAll('.title-input, .note-text-input').forEach(autoResize);
   syncStrikeSizes();
 }
+
+// Syncs version-state-dependent UI without rebuilding task column DOM.
+// Called by the version system after revert/restore so unsaved task text is never wiped.
+function syncTaskManagerChrome() {
+  var undoBtn = document.getElementById('filter-undo-btn');
+  if (undoBtn) undoBtn.classList.toggle('is-visible', undoStack.length > 0);
+  var clearBtn = document.getElementById('filter-clear-done');
+  if (clearBtn) {
+    var data = getData();
+    var hasDone = activeFilter === 'done' && data && ['life','work','pd'].some(function(tab) {
+      return (data[tab]||[]).some(function(t){ return t.done; });
+    });
+    var keepClearStateVisible = clearBtn.classList.contains('is-cleared') || clearBtn.classList.contains('is-undoing');
+    clearBtn.classList.toggle('is-visible', hasDone || keepClearStateVisible);
+    if (!hasDone && !clearBtn.classList.contains('is-cleared')) {
+      clearBtn.classList.remove('is-undoing', 'is-cleared');
+    }
+  }
+}
+window.syncTaskManagerChrome = syncTaskManagerChrome;
 
 function renderColumn(data, tab) {
   var tasks   = data[tab] || [];
@@ -1197,6 +1244,7 @@ function renderColumn(data, tab) {
   var maxFlipMs = 0;
   var completeAnimation = null;
   newItems.forEach(function(el) {
+    if (el.classList.contains('filter-enter')) return;
     var prev = prevRects[el.dataset.id];
     var currentTop = el.getBoundingClientRect().top;
     var delta = null;
@@ -1396,25 +1444,13 @@ document.addEventListener('keydown', function(e) {
     }
     if (handled) e.preventDefault();
   }
-  if ((e.ctrlKey || e.metaKey) && key === 'y' && !e.shiftKey) {
-    var activePanelRedo = document.querySelector('.panel.active');
-    var redoHandled = false;
-    if (activePanelRedo && activePanelRedo.id === 'panel-cogs-calc' && window.doCogsRedo) {
-      redoHandled = window.doCogsRedo();
-    } else {
-      redoHandled = doRedo();
-    }
-    if (redoHandled) e.preventDefault();
-  }
 });
 
 async function initDemoTasks() {
   undoStack = [];
-  redoStack = [];
   await migrateIfNeeded();
   render();
 }
 
 window.resetDemoTasks = initDemoTasks;
 initDemoTasks();
-

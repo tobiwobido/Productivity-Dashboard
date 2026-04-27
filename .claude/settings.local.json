@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ' *)",
+      "Bash(rm -rf \"preview-baseline-20260424-161958\")",
+      "Bash(rm -rf \"preview-baseline-20260424-163028\")",
+      "Bash(rm -rf \"preview-baseline-20260424-163313\")",
+      "Bash(rm -rf \"claude-md-baseline-20260424-165151\")",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "Bash(cp -v c:/Users/Owner/Documents/'Productivity Dashboard'/index.html c:/Users/Owner/Documents/'Productivity Dashboard'/demo/index.html)",
+      "Bash(cp -v c:/Users/Owner/Documents/'Productivity Dashboard'/widgets/cogs-calculator/script.js c:/Users/Owner/Documents/'Productivity Dashboard'/demo/widgets/cogs-calculator/script.js)",
+      "Bash(cp -v c:/Users/Owner/Documents/'Productivity Dashboard'/widgets/cogs-calculator/style.css c:/Users/Owner/Documents/'Productivity Dashboard'/demo/widgets/cogs-calculator/style.css)"
+    ]
+  }
+}

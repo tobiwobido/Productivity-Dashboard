@@ -63,10 +63,6 @@
           <span class="version-action-label">Publish Preview</span>
           <span class="version-action-feedback">Published</span>
         </button>
-        <button class="version-action-btn revert-btn" id="reset-preview-btn" type="button">
-          <span class="version-action-label">Revert Changes</span>
-          <span class="version-action-feedback">Preview reverted</span>
-        </button>
       </div>
     </div>
   </div>
@@ -162,8 +158,9 @@
             <span class="filter-tab-count" id="cnt-done">0</span>
           </span>
         </button>
-        <button class="filter-clear-done" id="filter-clear-done" type="button" onclick="clearAllDone()" aria-hidden="true">
+        <button class="filter-clear-done" id="filter-clear-done" type="button" onclick="handleClearDoneClick()" aria-hidden="true">
           <span class="filter-clear-label">Clear</span>
+          <span class="filter-clear-undo-label">Undo</span>
           <span class="filter-clear-feedback">Cleared</span>
         </button>
       </div>
@@ -304,7 +301,7 @@
         <!-- Middle: inputs + validation + buttons -->
         <div class="cogs-middle">
 
-          <div class="card">
+          <div class="card cogs-details-card">
             <p class="section-label">Product details</p>
             <div class="row">
               <label>Product name</label>
@@ -339,27 +336,35 @@
             </div>
           </div>
 
-          <div id="validationAlert" class="alert"></div>
+          <div id="validationAlert" class="alert"><span id="alertText" class="alert-text is-visible"></span></div>
 
-          <div class="card cogs-stretch">
-            <p class="section-label">Discount &amp; tax</p>
-            <div class="toggle-row">
-              <input type="checkbox" id="hasDiscount" onchange="toggleDiscount()">
-              <label for="hasDiscount">Apply supplier discount</label>
+          <div class="card cogs-stretch cogs-dt-card">
+            <div class="cogs-dt-header">
+              <p class="section-label">Discount &amp; Tax</p>
+              <div class="cogs-slider-row">
+                <label class="cogs-slider-group" for="hasDiscount">
+                  <input type="checkbox" id="hasDiscount" onchange="toggleDiscount()">
+                  <span class="cogs-slider-track" aria-hidden="true"><span class="cogs-slider-thumb"></span></span>
+                  <span>Discount</span>
+                </label>
+                <label class="cogs-slider-group" for="hasTax">
+                  <input type="checkbox" id="hasTax" onchange="toggleTax()" checked>
+                  <span class="cogs-slider-track" aria-hidden="true"><span class="cogs-slider-thumb"></span></span>
+                  <span>Tax</span>
+                </label>
+              </div>
             </div>
-            <div class="row" id="discountRow" style="display:none;">
-              <label>Discount</label>
-              <input type="number" id="discount" value="15" step="0.1" min="0" max="100" oninput="calc()">
-              <span class="unit">%</span>
-            </div>
-            <div class="toggle-row" style="margin-top:4px;">
-              <input type="checkbox" id="hasTax" onchange="toggleTax()" checked>
-              <label for="hasTax">Apply sales tax</label>
-            </div>
-            <div class="row" id="taxRow" style="display:flex;">
-              <label>Tax rate</label>
-              <input type="number" id="taxRate" value="8.25" step="0.001" min="0" max="20" oninput="calc()">
-              <span class="unit">%</span>
+            <div class="cogs-inputs-area">
+              <div class="row" id="discountRow" style="display:none;">
+                <label>Supplier Discount</label>
+                <input type="number" id="discount" value="15" step="0.1" min="0" max="100" oninput="calc()">
+                <span class="unit">%</span>
+              </div>
+              <div class="row" id="taxRow" style="display:flex;">
+                <label>Sales Tax</label>
+                <input type="number" id="taxRate" value="8.25" step="0.001" min="0" max="20" oninput="calc()">
+                <span class="unit">%</span>
+              </div>
             </div>
           </div>
 
@@ -387,22 +392,19 @@
 
           <div class="result-hero">
             <div>
-              <div class="rlabel">Your COGS &mdash; plug into SellerAmp</div>
-              <div class="rsub" id="heroSub">per listing unit</div>
+              <div class="rlabel">Your COGS</div>
             </div>
-            <div style="display:flex;align-items:center;gap:10px;">
-              <div class="rval" id="heroVal">—</div>
-              <button class="copy-btn action-btn" id="copyBtn" onclick="copyCOGS()">
-                <span class="copy-btn-label">Copy</span>
-                <span class="btn-feedback">Copied</span>
-                <span class="copy-btn-icon" aria-hidden="true">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-                    <path d="M8 7a3 3 0 0 1 3-3h7a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-1v-2h1a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-7a1 1 0 0 0-1 1v1H8V7z"/>
-                    <path d="M6 9a3 3 0 0 1 3-3h7a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V9zm3-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1H9z"/>
-                  </svg>
-                </span>
-              </button>
-            </div>
+            <div class="rval" id="heroVal">—</div>
+            <button class="copy-btn action-btn" id="copyBtn" onclick="copyCOGS()">
+              <span class="copy-btn-label">Copy</span>
+              <span class="btn-feedback">Copied</span>
+              <span class="copy-btn-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                  <path d="M8 7a3 3 0 0 1 3-3h7a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-1v-2h1a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-7a1 1 0 0 0-1 1v1H8V7z"/>
+                  <path d="M6 9a3 3 0 0 1 3-3h7a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V9zm3-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1H9z"/>
+                </svg>
+              </span>
+            </button>
           </div>
 
           <div class="results-grid">
@@ -465,15 +467,10 @@
   var versionSwitchLocked = false;
   var PREVIEW_CLASS = 'dashboard-topbar-preview-v2';
   var VERSION_STORAGE_KEY = 'dashboardVersionSystem_v1';
-  var VERSION_RESTORE_STORAGE_KEY = 'dashboardPreviewRestoreState_v1';
   var PRODUCTION_RESTORE_STORAGE_KEY = 'dashboardProductionRestoreState_v1';
   var LEGACY_PREVIEW_STORAGE_KEY = 'dashboardTopbarPreviewMode';
-  var PREVIEW_UPDATE_BATCH_ID = 'ai-preview-batch-2026-04-24-header-align-v1';
   var activeDashboardVersion = 'production';
   var dashboardVersions = null;
-  var restorablePreviewConfig = null;
-  var restorablePreviewRedoConfig = null;
-  var previewRestoreAvailable = false;
   var restorableProductionConfig = null;
   var productionRestoreAvailable = false;
   var VERSION_FEEDBACK_HOLD_MS = 1350;
@@ -518,31 +515,6 @@
     } catch (e) {}
   }
 
-  function loadPreviewRestoreState() {
-    try {
-      var saved = JSON.parse(localStorage.getItem(VERSION_RESTORE_STORAGE_KEY) || 'null');
-      if (saved && saved.backup) {
-        restorablePreviewConfig = cloneVersionConfig(saved.backup);
-        restorablePreviewRedoConfig = saved.redo ? cloneVersionConfig(saved.redo) : null;
-        previewRestoreAvailable = saved.available !== false;
-      }
-    } catch (e) {
-      restorablePreviewConfig = null;
-      restorablePreviewRedoConfig = null;
-      previewRestoreAvailable = false;
-    }
-  }
-
-  function savePreviewRestoreState() {
-    try {
-      localStorage.setItem(VERSION_RESTORE_STORAGE_KEY, JSON.stringify({
-        backup: restorablePreviewConfig,
-        redo: restorablePreviewRedoConfig,
-        available: !!previewRestoreAvailable
-      }));
-    } catch (e) {}
-  }
-
   function loadProductionRestoreState() {
     try {
       var saved = JSON.parse(localStorage.getItem(PRODUCTION_RESTORE_STORAGE_KEY) || 'null');
@@ -573,22 +545,6 @@
     return !!dashboardVersions && !versionConfigEquals(dashboardVersions.preview, dashboardVersions.production);
   }
 
-  function hasPreviewRestoreChanges() {
-    return !!dashboardVersions
-      && !!restorablePreviewConfig
-      && previewRestoreAvailable
-      && !versionConfigEquals(dashboardVersions.preview, restorablePreviewConfig);
-  }
-
-  function hasPreviewRedoChanges() {
-    return !!dashboardVersions
-      && !!restorablePreviewConfig
-      && !!restorablePreviewRedoConfig
-      && previewRestoreAvailable
-      && versionConfigEquals(dashboardVersions.preview, restorablePreviewConfig)
-      && !versionConfigEquals(dashboardVersions.preview, restorablePreviewRedoConfig);
-  }
-
   function syncVersionButtons(versionName) {
     var isPreview = versionName === 'preview';
     var prodBtn = document.getElementById('version-production-btn');
@@ -615,34 +571,6 @@
     var unsaved = document.getElementById('version-unsaved');
     if (!unsaved) return;
     unsaved.classList.toggle('is-visible', versionName === 'preview' && hasUnsavedPreviewChanges());
-  }
-
-  function setRevertButtonState() {
-    var btn = document.getElementById('reset-preview-btn');
-    if (!btn) return;
-    var label = btn.querySelector('.version-action-label');
-    var feedback = btn.querySelector('.version-action-feedback');
-    var canRevert = hasPreviewRestoreChanges();
-    var canRestore = hasPreviewRedoChanges();
-    if (label && !btn.classList.contains('is-feedback')) {
-      label.textContent = canRestore ? 'Restore Changes' : 'Revert Changes';
-    }
-    if (feedback) feedback.textContent = 'Preview reverted';
-    btn.disabled = activeDashboardVersion !== 'preview' || (!canRevert && !canRestore);
-    btn.classList.toggle('is-restore', canRestore);
-  }
-
-  function showRevertButtonFeedback(message) {
-    var btn = document.getElementById('reset-preview-btn');
-    if (!btn) return;
-    var feedback = btn.querySelector('.version-action-feedback');
-    if (feedback) feedback.textContent = message;
-    btn.classList.add('is-feedback');
-    clearTimeout(btn._revertTimer);
-    btn._revertTimer = setTimeout(function() {
-      btn.classList.remove('is-feedback');
-      setRevertButtonState();
-    }, VERSION_FEEDBACK_HOLD_MS);
   }
 
   function setPublishRevertButtonState() {
@@ -676,18 +604,11 @@
     syncVersionButtons(activeDashboardVersion);
     syncUnsavedIndicatorForVersion(activeDashboardVersion);
     setVersionActionsVisible(isPreview);
-    setRevertButtonState();
     setPublishRevertButtonState();
   }
 
   function applyDashboardVersionConfig(config) {
     document.body.classList.toggle(PREVIEW_CLASS, !!config && config.layout === 'previewTopbar');
-    var isReverted = activeDashboardVersion === 'preview' && !!config && config.aiBatchId !== PREVIEW_UPDATE_BATCH_ID;
-    document.body.classList.toggle('preview-update-reverted', isReverted);
-    var medOptionText = isReverted ? 'MED' : 'Medium';
-    document.querySelectorAll('.add-priority-select option[value="medium"]').forEach(function(opt) {
-      opt.textContent = medOptionText;
-    });
     syncVersionChrome();
   }
 
@@ -734,7 +655,6 @@
     } else if (activeDashboardVersion === 'production' && nextVersion === 'preview') {
       setPublishRevertVisible(false);
       syncUnsavedIndicatorForVersion(nextVersion);
-      setRevertButtonState();
       setVersionActionsVisible(true);
     }
 
@@ -815,51 +735,9 @@
     }, PANEL_EXIT_MS);
   }
 
-  function resetPreview() {
-    if (!dashboardVersions || activeDashboardVersion !== 'preview') return;
-    if (hasPreviewRedoChanges()) {
-      dashboardVersions.preview = cloneVersionConfig(restorablePreviewRedoConfig);
-      saveDashboardVersions();
-      applyDashboardVersionConfig(dashboardVersions.preview);
-      _donutAnimated = false;
-      renderDashboard(getData());
-      if (window.triggerTaskDashboardEntrance) window.triggerTaskDashboardEntrance();
-      showRevertButtonFeedback('Changes restored');
-      savePreviewRestoreState();
-      return;
-    }
-    if (hasPreviewRestoreChanges()) {
-      restorablePreviewRedoConfig = cloneVersionConfig(dashboardVersions.preview);
-      dashboardVersions.preview = cloneVersionConfig(restorablePreviewConfig);
-      saveDashboardVersions();
-      applyDashboardVersionConfig(dashboardVersions.preview);
-      _donutAnimated = false;
-      renderDashboard(getData());
-      if (window.triggerTaskDashboardEntrance) window.triggerTaskDashboardEntrance();
-      showRevertButtonFeedback('Preview reverted');
-      savePreviewRestoreState();
-      return;
-    }
-    setRevertButtonState();
-  }
-
-  function savePreviewUpdateSnapshot() {
-    if (!dashboardVersions || !dashboardVersions.preview) return;
-    if (dashboardVersions.preview.aiBatchId !== PREVIEW_UPDATE_BATCH_ID) {
-      restorablePreviewConfig = cloneVersionConfig(dashboardVersions.preview);
-      restorablePreviewRedoConfig = null;
-      previewRestoreAvailable = true;
-      dashboardVersions.preview.aiBatchId = PREVIEW_UPDATE_BATCH_ID;
-      saveDashboardVersions();
-      savePreviewRestoreState();
-    }
-  }
-
   (function initDashboardVersionSystem() {
     dashboardVersions = loadDashboardVersions();
-    loadPreviewRestoreState();
     loadProductionRestoreState();
-    savePreviewUpdateSnapshot();
     activeDashboardVersion = dashboardVersions.active === 'preview' ? 'preview' : 'production';
     applyDashboardVersionConfig(dashboardVersions[activeDashboardVersion]);
   })();
@@ -932,11 +810,6 @@
   var publishBtn = document.getElementById('publish-preview-btn');
   if (publishBtn) publishBtn.addEventListener('click', publishPreview);
 
-  var resetBtn = document.getElementById('reset-preview-btn');
-  if (resetBtn) {
-    resetBtn.addEventListener('click', resetPreview);
-  }
-
   var revertPublishBtn = document.getElementById('revert-publish-btn');
   if (revertPublishBtn) {
     revertPublishBtn.addEventListener('click', revertPublish);
@@ -944,7 +817,6 @@
 
   window.setDashboardVersion = setDashboardVersion;
   window.publishDashboardPreview = publishPreview;
-  window.resetDashboardPreview = resetPreview;
   window.updatePreviewDashboardConfig = markPreviewChanged;
 </script>
 

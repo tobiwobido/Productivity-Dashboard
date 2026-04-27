@@ -16,6 +16,7 @@
   --gold:         #c8a96e;
   --gold-dim:     rgba(200,169,110,0.15);
   --sidebar-w:    200px;
+  --demo-banner-h: 44px;
 }
 
 /* ── Base reset ────────────────────────────────────────────────────────────── */
@@ -45,6 +46,50 @@ body {
   min-height: 100vh;
   display: flex;
   overflow: hidden;
+}
+
+.demo-banner {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-w);
+  right: 0;
+  z-index: 1200;
+  height: var(--demo-banner-h);
+  padding: 0 16px 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+}
+
+.demo-banner-text {
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+.demo-reset-banner-btn {
+  width: auto;
+  max-width: max-content;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+body.demo-mode .sidebar {
+  top: 0;
+  height: 100vh;
+}
+
+body.demo-mode .main-content {
+  height: calc(100vh - var(--demo-banner-h));
+  margin-top: var(--demo-banner-h);
 }
 
 h1 { font-size: 36px; font-weight: 600; margin-bottom: 4px; }
@@ -401,55 +446,6 @@ h1 { font-size: 36px; font-weight: 600; margin-bottom: 4px; }
   overflow-y: auto;
   overflow-x: hidden;
   height: 100vh;
-}
-
-.demo-mode-banner {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  min-height: 44px;
-  padding: 8px 22px;
-  color: var(--gold);
-  background: rgba(20, 20, 19, 0.94);
-  border-bottom: 1px solid rgba(200, 169, 110, 0.28);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.demo-reset-btn {
-  border: 1px solid rgba(200, 169, 110, 0.38);
-  border-radius: 999px;
-  padding: 7px 14px;
-  color: var(--gold);
-  background: rgba(200, 169, 110, 0.11);
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease;
-}
-
-.demo-reset-btn:hover,
-.demo-reset-btn:focus-visible {
-  border-color: var(--gold);
-  background: rgba(200, 169, 110, 0.18);
-  outline: none;
-}
-
-.demo-reset-btn:active {
-  transform: translateY(1px);
-}
-
-.demo-reset-btn:disabled {
-  cursor: default;
-  opacity: 0.7;
-  transform: none;
 }
 
 /* ── Panel system ──────────────────────────────────────────────────────────── */
